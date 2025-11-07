@@ -230,6 +230,68 @@ This project follows AI-First Development practices:
 - **Golden Prompts:** See `.prompt/golden_prompts.md`
 - **Context Artifacts:** Design Thinking, Product Management, and Process artifacts in `docs/context/`
 
+### Model Context Protocol (MCP) Integration
+
+The application includes an **MCP server** (`mcp_server.py`) that enables AI agents to safely query and inspect the database in read-only mode. This enables features such as:
+
+- **Intelligent Search**: AI-powered resource discovery based on database content
+- **Auto-summaries**: Generate summaries of resources, bookings, and user activity
+- **Context-aware Assistance**: AI help based on actual application state
+- **Data Analysis**: Generate reports and insights from database content
+
+#### MCP Server Features
+
+- **Read-only access**: Only SELECT queries allowed (no modifications)
+- **SQL injection protection**: Parameterized queries required
+- **Security**: Dangerous SQL keywords blocked
+- **Structured tools**: Pre-built tools for common queries
+
+#### Available MCP Tools
+
+1. `query_database` - Execute custom SELECT queries
+2. `get_table_schema` - Get schema information for tables
+3. `list_tables` - List all database tables
+4. `get_resource_summary` - Get comprehensive resource summaries
+5. `search_resources` - Search resources by keyword, category, or location
+
+#### Setting Up MCP
+
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+   
+   **Note:** If the `mcp` package is not available on PyPI, install from the official repository:
+   ```bash
+   pip install git+https://github.com/modelcontextprotocol/python-sdk.git
+   ```
+
+2. **Configure MCP client** (example for Claude Desktop):
+   ```json
+   {
+     "mcpServers": {
+       "campus-resource-hub": {
+         "command": "python",
+         "args": ["/absolute/path/to/Campus_Resource_Hub/mcp_server.py"]
+       }
+     }
+   }
+   ```
+
+3. **Use with AI agents:**
+   - The MCP server communicates via stdio
+   - Compatible with MCP-compatible AI clients
+   - See `.prompt/dev_notes.md` for detailed usage examples
+
+#### Security
+
+- All database queries are **read-only** (SELECT only)
+- SQL injection protection via parameterized queries
+- Dangerous SQL keywords (DROP, DELETE, UPDATE, etc.) are blocked
+- Database connection uses SQLite URI mode with read-only flag
+
+For detailed MCP documentation, see `.prompt/dev_notes.md`.
+
 ## 📝 Database Migration
 
 The database is automatically created on first run. To reset:

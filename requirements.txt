@@ -12,4 +12,5 @@ Werkzeug
 Pillow
 numpy
 scikit-learn
+mcp>=0.9.0
 

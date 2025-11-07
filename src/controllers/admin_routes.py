@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
@@ -61,7 +63,38 @@ def admin_dashboard():
                 LIMIT 10
             """)
         )
-        pending_bookings = [dict(row._mapping) for row in pending_bookings_result]
+        pending_bookings = []
+        for row in pending_bookings_result:
+            booking_dict = dict(row._mapping)
+            # Convert datetime strings to datetime objects
+            if isinstance(booking_dict.get('start_datetime'), str):
+                try:
+                    booking_dict['start_datetime'] = datetime.fromisoformat(booking_dict['start_datetime'].replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    try:
+                        booking_dict['start_datetime'] = datetime.strptime(booking_dict['start_datetime'], '%Y-%m-%d %H:%M:%S')
+                    except (ValueError, AttributeError):
+                        booking_dict['start_datetime'] = None
+            
+            if isinstance(booking_dict.get('end_datetime'), str):
+                try:
+                    booking_dict['end_datetime'] = datetime.fromisoformat(booking_dict['end_datetime'].replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    try:
+                        booking_dict['end_datetime'] = datetime.strptime(booking_dict['end_datetime'], '%Y-%m-%d %H:%M:%S')
+                    except (ValueError, AttributeError):
+                        booking_dict['end_datetime'] = None
+            
+            if isinstance(booking_dict.get('created_at'), str):
+                try:
+                    booking_dict['created_at'] = datetime.fromisoformat(booking_dict['created_at'].replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    try:
+                        booking_dict['created_at'] = datetime.strptime(booking_dict['created_at'], '%Y-%m-%d %H:%M:%S')
+                    except (ValueError, AttributeError):
+                        booking_dict['created_at'] = None
+            
+            pending_bookings.append(booking_dict)
 
     return render_template('admin/dashboard.html', stats=stats, pending_bookings=pending_bookings)
 
@@ -78,12 +111,23 @@ def manage_users():
         )
         users = []
         for row in result:
+            created_at = row[7]
+            # Convert datetime string to datetime object if needed
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    try:
+                        created_at = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                    except (ValueError, AttributeError):
+                        created_at = None
+            
             users.append({
                 'user_id': row[0],
                 'name': row[1],
                 'email': row[2],
                 'role': row[4],
-                'created_at': row[7],
+                'created_at': created_at,
             })
 
     return render_template('admin/users.html', users=users)
@@ -103,11 +147,22 @@ def manage_resources():
         )
         resources = []
         for row in result:
+            created_at = row[10]
+            # Convert datetime string to datetime object if needed
+            if isinstance(created_at, str):
+                try:
+                    created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    try:
+                        created_at = datetime.strptime(created_at, '%Y-%m-%d %H:%M:%S')
+                    except (ValueError, AttributeError):
+                        created_at = None
+            
             resources.append({
                 'resource_id': row[0],
                 'title': row[2],
                 'status': row[9],
-                'created_at': row[10],
+                'created_at': created_at,
             })
 
     return render_template('admin/resources.html', resources=resources)
@@ -130,7 +185,20 @@ def moderate_reviews():
                 ORDER BY r.timestamp DESC
             """)
         )
-        reviews = [dict(row._mapping) for row in result]
+        reviews = []
+        for row in result:
+            review_dict = dict(row._mapping)
+            # Convert datetime string to datetime object if needed
+            if isinstance(review_dict.get('timestamp'), str):
+                try:
+                    review_dict['timestamp'] = datetime.fromisoformat(review_dict['timestamp'].replace('Z', '+00:00'))
+                except (ValueError, AttributeError):
+                    try:
+                        review_dict['timestamp'] = datetime.strptime(review_dict['timestamp'], '%Y-%m-%d %H:%M:%S')
+                    except (ValueError, AttributeError):
+                        review_dict['timestamp'] = None
+            
+            reviews.append(review_dict)
 
     return render_template('admin/reviews.html', reviews=reviews)
 
