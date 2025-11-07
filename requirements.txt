@@ -1,0 +1,15 @@
+Flask
+Jinja2
+Flask-Login
+Flask-WTF
+Flask-Bcrypt
+Flask-SQLAlchemy
+pytest
+SQLAlchemy
+python-dotenv
+email-validator
+Werkzeug
+Pillow
+numpy
+scikit-learn
+

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Manage Resources{% endblock %}
+{% block content %}
+<div class="bg-white shadow-xl rounded-xl p-8">
+    <h1 class="text-3xl font-bold text-gray-900 mb-6">Resource Management</h1>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Created</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for resource in resources %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ resource.resource_id }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ resource.title }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-2 py-1 text-xs font-semibold rounded-full
+                            {% if resource.status == 'published' %}bg-green-100 text-green-700
+                            {% elif resource.status == 'draft' %}bg-yellow-100 text-yellow-700
+                            {% else %}bg-gray-100 text-gray-700{% endif %}">
+                            {{ resource.status|title }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {{ resource.created_at.strftime('%Y-%m-%d') if resource.created_at else 'N/A' }}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <a href="{{ url_for('resources.resource_detail', resource_id=resource.resource_id) }}" 
+                           class="text-indigo-600 hover:text-indigo-900">View</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <div class="mt-6">
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="text-indigo-600 hover:text-indigo-700">← Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}
+

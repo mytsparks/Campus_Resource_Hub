@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<div class="max-w-md mx-auto bg-white p-8 shadow-2xl rounded-xl mt-10">
+    <h1 class="text-3xl font-bold text-center text-gray-900 mb-6">Create Account</h1>
+    <form method="POST" action="{{ url_for('auth.register') }}" novalidate enctype="application/x-www-form-urlencoded">
+        {{ form.hidden_tag() }}
+        
+        <div class="mb-4">
+            {{ form.name.label(class_='form-label text-sm font-medium text-gray-700') }}
+            {{ form.name(class_='form-control p-3 rounded-lg border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500', placeholder='Jordan Rivera') }}
+            {% for error in form.name.errors %}
+                <p class="text-sm text-red-600 mt-2">{{ error }}</p>
+            {% endfor %}
+        </div>
+        <div class="mb-4">
+            {{ form.email.label(class_='form-label text-sm font-medium text-gray-700') }}
+            {{ form.email(class_='form-control p-3 rounded-lg border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500', placeholder='you@university.edu') }}
+            {% for error in form.email.errors %}
+                <p class="text-sm text-red-600 mt-2">{{ error }}</p>
+            {% endfor %}
+        </div>
+        <div class="mb-4">
+            {{ form.password.label(class_='form-label text-sm font-medium text-gray-700') }}
+            {{ form.password(class_='form-control p-3 rounded-lg border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500', placeholder='At least 8 characters') }}
+            {% for error in form.password.errors %}
+                <p class="text-sm text-red-600 mt-2">{{ error }}</p>
+            {% endfor %}
+        </div>
+        <div class="mb-4">
+            {{ form.confirm_password.label(class_='form-label text-sm font-medium text-gray-700') }}
+            {{ form.confirm_password(class_='form-control p-3 rounded-lg border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500', placeholder='Re-enter password') }}
+            {% for error in form.confirm_password.errors %}
+                <p class="text-sm text-red-600 mt-2">{{ error }}</p>
+            {% endfor %}
+        </div>
+        <div class="mb-6">
+            {{ form.role.label(class_='form-label text-sm font-medium text-gray-700') }}
+            {{ form.role(class_='form-select p-3 rounded-lg border border-gray-300 focus:ring-indigo-500 focus:border-indigo-500 bg-white') }}
+            {% for error in form.role.errors %}
+                <p class="text-sm text-red-600 mt-2">{{ error }}</p>
+            {% endfor %}
+        </div>
+        {{ form.submit(class_='w-full bg-indigo-600 text-white p-3 rounded-lg font-semibold hover:bg-indigo-700 transition duration-150') }}
+    </form>
+</div>
+{% endblock %}
+
