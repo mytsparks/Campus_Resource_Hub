@@ -7,49 +7,182 @@
     <!-- Tailwind and Bootstrap for a blended modern UI -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         /* Custom font for better readability */
-        :root { font-family: 'Inter', sans-serif; }
+        :root { 
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+        /* Smooth transitions */
+        * {
+            transition: all 0.2s ease-in-out;
+        }
+        /* Dropdown menu styling */
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            z-index: 1000;
+        }
+        .dropdown-menu.show {
+            display: block;
+        }
+        .dropdown-item {
+            display: block;
+            padding: 0.75rem 1rem;
+            color: #374151;
+            text-decoration: none;
+            border-bottom: 1px solid #f3f4f6;
+        }
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+        .dropdown-item:hover {
+            background-color: #f9fafb;
+            color: #4f46e5;
+        }
+        .dropdown-item.danger:hover {
+            background-color: #fee2e2;
+            color: #dc2626;
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
-    <!-- Navbar Placeholder -->
-    <nav class="bg-white shadow-md p-4">
-        <div class="container mx-auto flex justify-between items-center">
-            <a href="{{ url_for('resources.list_resources') }}" class="text-xl font-bold text-indigo-600">Resource Hub</a>
-            <div class="space-x-4 flex items-center">
-                {% if current_user.is_authenticated %}
-                <span class="hidden sm:inline-block text-gray-500">Hi, {{ current_user.name or 'Member' }}</span>
-                <a href="{{ url_for('resources.create_resource') }}" class="text-gray-600 hover:text-indigo-600">Add Resource</a>
-                <a href="{{ url_for('bookings.my_bookings') }}" class="text-gray-600 hover:text-indigo-600">My Bookings</a>
-                <a href="{{ url_for('messages.inbox') }}" class="text-gray-600 hover:text-indigo-600">Messages</a>
-                <a href="{{ url_for('auth.logout') }}" class="text-gray-600 hover:text-indigo-600">Logout</a>
-                {% else %}
-                <a href="{{ url_for('auth.login') }}" class="text-gray-600 hover:text-indigo-600">Login</a>
-                <a href="{{ url_for('auth.register') }}" class="text-gray-600 hover:text-indigo-600">Register</a>
-                {% endif %}
-                {% if current_user.is_authenticated and current_user.role == 'admin' %}
-                <a href="{{ url_for('admin.admin_dashboard') }}" class="text-gray-600 hover:text-indigo-600">Admin</a>
-                {% endif %}
+    <!-- Wireframe Header - Blue Banner -->
+    <header class="bg-indigo-600 text-white sticky top-0 z-50 shadow-md">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Left Side: Logo, Title, Home Button -->
+                <div class="flex items-center space-x-4">
+                    <!-- Logo Box -->
+                    <div class="bg-white px-3 py-2 rounded flex items-center justify-center">
+                        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CRH" class="h-6 w-auto">
+                    </div>
+                    <!-- Title -->
+                    <h1 class="text-xl font-bold hidden sm:block">Campus Resource Hub</h1>
+                    <!-- Home Button -->
+                    <a href="{{ url_for('resources.list_resources') }}" 
+                       class="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 font-medium flex items-center space-x-2 transition">
+                        <i class="fas fa-home"></i>
+                        <span>Home</span>
+                    </a>
+                </div>
+                
+                <!-- Right Side: Resources, Bookings, Notifications, User -->
+                <div class="flex items-center space-x-4">
+                    <a href="{{ url_for('resources.list_resources') }}" 
+                       class="text-white hover:text-indigo-200 font-medium transition">
+                        Resources
+                    </a>
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('bookings.my_bookings') }}" 
+                       class="text-white hover:text-indigo-200 font-medium transition">
+                        Bookings
+                    </a>
+                    <!-- Notifications Bell -->
+                    <div class="relative">
+                        <a href="{{ url_for('messages.inbox') }}" 
+                           class="text-white hover:text-indigo-200 transition relative">
+                            <i class="fas fa-bell text-xl"></i>
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">3</span>
+                        </a>
+                    </div>
+                    <!-- User Profile Dropdown -->
+                    <div class="relative">
+                        <button onclick="toggleDropdown()" class="focus:outline-none focus:ring-2 focus:ring-white rounded-full p-1">
+                            <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-indigo-600 font-bold border-2 border-indigo-300">
+                                {{ current_user.name[0].upper() if current_user.name else 'U' }}
+                            </div>
+                        </button>
+                        <div id="userDropdown" class="dropdown-menu">
+                            <div class="px-4 py-3 border-b border-gray-200">
+                                <p class="text-sm font-semibold text-gray-900">{{ current_user.name or 'User' }}</p>
+                                <p class="text-xs text-gray-500">{{ current_user.email }}</p>
+                                <span class="inline-block mt-1 px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
+                                    {{ current_user.role|title }}
+                                </span>
+                            </div>
+                            <a href="{{ url_for('bookings.my_bookings') }}" class="dropdown-item">
+                                <i class="fas fa-calendar-alt mr-2"></i> My Bookings
+                            </a>
+                            <a href="{{ url_for('messages.inbox') }}" class="dropdown-item">
+                                <i class="fas fa-inbox mr-2"></i> Messages
+                            </a>
+                            <a href="{{ url_for('resources.create_resource') }}" class="dropdown-item">
+                                <i class="fas fa-plus-circle mr-2"></i> Add Resource
+                            </a>
+                            {% if current_user.role == 'admin' %}
+                            <a href="{{ url_for('admin.admin_dashboard') }}" class="dropdown-item">
+                                <i class="fas fa-cog mr-2"></i> Admin Dashboard
+                            </a>
+                            {% endif %}
+                            <div class="border-t border-gray-200 my-1"></div>
+                            <a href="{{ url_for('auth.logout') }}" class="dropdown-item danger">
+                                <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                            </a>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="flex items-center space-x-3">
+                        <a href="{{ url_for('auth.login') }}" class="text-white hover:text-indigo-200 font-medium">Login</a>
+                        <a href="{{ url_for('auth.register') }}" class="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 font-medium">Sign Up</a>
+                    </div>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </nav>
+    </header>
+    
+    <script>
+        function toggleDropdown() {
+            const dropdown = document.getElementById('userDropdown');
+            dropdown.classList.toggle('show');
+        }
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const dropdown = document.getElementById('userDropdown');
+            const button = event.target.closest('button[onclick="toggleDropdown()"]');
+            if (!button && !dropdown.contains(event.target)) {
+                dropdown.classList.remove('show');
+            }
+        });
+    </script>
     
     <!-- Main Content Block -->
-    <main class="container mx-auto p-4 flex-grow">
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow">
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
             <div class="mb-6 space-y-3">
                 {% for category, message in messages %}
-                    {% set bs_category = 'info' %}
+                    {% set alert_class = 'bg-blue-50 border-blue-200 text-blue-800' %}
                     {% if category == 'success' %}
-                        {% set bs_category = 'success' %}
+                        {% set alert_class = 'bg-green-50 border-green-200 text-green-800' %}
                     {% elif category == 'error' %}
-                        {% set bs_category = 'danger' %}
+                        {% set alert_class = 'bg-red-50 border-red-200 text-red-800' %}
                     {% elif category == 'warning' %}
-                        {% set bs_category = 'warning' %}
+                        {% set alert_class = 'bg-yellow-50 border-yellow-200 text-yellow-800' %}
                     {% endif %}
-                    <div class="alert alert-{{ bs_category }} shadow-sm" role="alert">{{ message }}</div>
+                    <div class="border-l-4 {{ alert_class }} p-4 rounded-r-lg shadow-sm" role="alert">
+                        <div class="flex items-center">
+                            {% if category == 'success' %}
+                                <i class="fas fa-check-circle mr-2"></i>
+                            {% elif category == 'error' %}
+                                <i class="fas fa-exclamation-circle mr-2"></i>
+                            {% elif category == 'warning' %}
+                                <i class="fas fa-exclamation-triangle mr-2"></i>
+                            {% else %}
+                                <i class="fas fa-info-circle mr-2"></i>
+                            {% endif %}
+                            <span>{{ message }}</span>
+                        </div>
+                    </div>
                 {% endfor %}
             </div>
             {% endif %}
@@ -57,9 +190,37 @@
         {% block content %}{% endblock %}
     </main>
 
-    <!-- Footer Placeholder -->
-    <footer class="mt-8 p-4 bg-gray-100 text-center text-gray-600">
-        <p>&copy; 2025 AiDD Capstone Project</p>
+    <!-- Modern Footer -->
+    <footer class="bg-gray-900 text-gray-300 mt-12">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <div>
+                    <h3 class="text-white font-bold text-lg mb-4">Campus Resource Hub</h3>
+                    <p class="text-sm">Your one-stop platform for discovering and booking campus resources.</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">Quick Links</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="{{ url_for('resources.list_resources') }}" class="hover:text-indigo-400">Browse Resources</a></li>
+                        {% if current_user.is_authenticated %}
+                        <li><a href="{{ url_for('bookings.my_bookings') }}" class="hover:text-indigo-400">My Bookings</a></li>
+                        <li><a href="{{ url_for('resources.create_resource') }}" class="hover:text-indigo-400">Add Resource</a></li>
+                        {% else %}
+                        <li><a href="{{ url_for('auth.login') }}" class="hover:text-indigo-400">Login</a></li>
+                        <li><a href="{{ url_for('auth.register') }}" class="hover:text-indigo-400">Sign Up</a></li>
+                        {% endif %}
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-semibold mb-4">About</h4>
+                    <p class="text-sm">&copy; 2025 AiDD Capstone Project - Team 7</p>
+                    <p class="text-sm mt-2">Built with Flask, SQLAlchemy, and modern web technologies.</p>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 mt-8 pt-6 text-center text-sm">
+                <p>&copy; 2025 Campus Resource Hub. All rights reserved.</p>
+            </div>
+        </div>
     </footer>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
 </body>

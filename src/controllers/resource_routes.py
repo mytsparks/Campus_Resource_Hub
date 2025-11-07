@@ -48,7 +48,7 @@ def list_resources():
     category = request.args.get('category')
     location = request.args.get('location')
     capacity = request.args.get('capacity', type=int)
-    sort_by = request.args.get('sort', 'recent')  # recent, most_booked, top_rated
+    sort_by = request.args.get('sort', 'name')  # name, recent, most_booked, top_rated
     use_advanced = request.args.get('advanced', 'false') == 'true'  # Enable advanced search
     show_all = request.args.get('show_all', 'false') == 'true'  # Show all resources (for owners/admins)
 
@@ -165,7 +165,9 @@ def list_resources():
             } for r in resources]
         
         # Apply sorting
-        if sort_by == 'most_booked':
+        if sort_by == 'name':
+            resources = sorted(resources, key=lambda r: r.get('title', '').lower())
+        elif sort_by == 'most_booked':
             # Sort by number of bookings (would need join, simplified for now)
             resources = sorted(resources, key=lambda r: r.get('booking_count', 0), reverse=True)
         elif sort_by == 'top_rated':
