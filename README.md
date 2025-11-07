@@ -80,6 +80,17 @@ A full-stack web application for managing campus resource booking and sharing, b
    - Waitlist for fully booked resources
    - Waitlist management DAL
 
+### ✅ AI Features
+
+9. **Auto-Summary Reporter**
+   - Weekly summary generation with AI-powered insights
+   - Top 5 most reserved resources analysis
+   - Booking trends and approval rate statistics
+   - User activity and engagement metrics
+   - Category breakdown and recommendations
+   - Supports local LLMs (Ollama) and API-based models (OpenAI, Anthropic)
+   - Data-driven summaries (no fabricated content)
+
 ### 🚧 Optional Features (Partially Implemented)
 
 - **Advanced Search:** Embedding-based retrieval (infrastructure ready, needs implementation)
@@ -332,6 +343,90 @@ After first run, the following admin user is automatically created:
 - **Password:** `Password1`
 - **Role:** `admin`
 
+## 🤖 AI Features Configuration
+
+### Auto-Summary Reporter
+
+The application includes an AI-powered summary generator that creates weekly reports based on actual database data.
+
+#### LLM Configuration
+
+The application uses **Google Gemini** by default for AI-powered summaries. Configure via environment variables:
+
+**For Google Gemini (Default):**
+```bash
+export LLM_PROVIDER=gemini
+export LLM_MODEL=gemini-2.0-flash
+export LLM_API_KEY=your-api-key-here
+```
+
+**For Ollama (Local LLM):**
+```bash
+export LLM_PROVIDER=ollama
+export LLM_MODEL=llama3.2
+export OLLAMA_BASE_URL=http://localhost:11434
+```
+
+**For OpenAI:**
+```bash
+export LLM_PROVIDER=openai
+export LLM_MODEL=gpt-4
+export LLM_API_KEY=your-api-key-here
+```
+
+**For Anthropic Claude:**
+```bash
+export LLM_PROVIDER=anthropic
+export LLM_MODEL=claude-3-sonnet-20240229
+export LLM_API_KEY=your-api-key-here
+```
+
+**Note:** The application is pre-configured with a Gemini API key. To use your own key, set the `LLM_API_KEY` environment variable.
+
+#### Using the Summary Generator
+
+1. **Access from Admin Dashboard:**
+   - Log in as admin or staff
+   - Navigate to Admin Dashboard
+   - Click "Generate Summary" button
+
+2. **Features:**
+   - Top 5 most reserved resources
+   - Booking statistics (approved, pending, rejected)
+   - User activity metrics
+   - Category breakdown
+   - AI-generated insights and recommendations
+
+3. **Data Integrity:**
+   - All summaries are based on actual database queries
+   - No fabricated or hallucinated data
+   - Real-time statistics from the past 7 days
+
+#### Setting Up Ollama (Local LLM)
+
+1. **Install Ollama:**
+   ```bash
+   # Visit https://ollama.ai for installation instructions
+   # Or use: curl -fsSL https://ollama.ai/install.sh | sh
+   ```
+
+2. **Pull a Model:**
+   ```bash
+   ollama pull llama3.2
+   # Or: ollama pull mistral
+   ```
+
+3. **Start Ollama:**
+   ```bash
+   ollama serve
+   ```
+
+4. **Configure Environment:**
+   ```bash
+   export LLM_PROVIDER=ollama
+   export LLM_MODEL=llama3.2
+   ```
+
 ## 🎯 Next Steps for Development
 
 1. Implement advanced search with embeddings
@@ -341,6 +436,7 @@ After first run, the following admin user is automatically created:
 5. Implement waitlist UI and notifications
 6. Add resource editing functionality
 7. Enhance admin moderation tools
+8. Add scheduled summary generation (cron jobs)
 
 ## 📄 License
 

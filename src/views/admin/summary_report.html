@@ -1,0 +1,202 @@
+{% extends "base.html" %}
+{% block title %}Weekly Summary Report{% endblock %}
+{% block content %}
+<div class="bg-white shadow-xl rounded-xl p-8">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Weekly Summary Report</h1>
+            <p class="text-gray-600">
+                Generated: {{ summary.generated_at[:19] }} | 
+                Period: {{ summary.period.start[:10] }} to {{ summary.period.end[:10] }}
+            </p>
+        </div>
+        <a href="{{ url_for('admin.admin_dashboard') }}" class="text-indigo-600 hover:text-indigo-700">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- AI-Generated Summary -->
+    <div class="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-lg p-6 mb-8 border-l-4 border-indigo-500">
+        <h2 class="text-2xl font-bold text-gray-900 mb-4 flex items-center">
+            <i class="fas fa-robot mr-2 text-indigo-600"></i>
+            AI-Generated Summary
+        </h2>
+        <div class="prose max-w-none text-gray-700 whitespace-pre-wrap">{{ summary.ai_summary }}</div>
+    </div>
+
+    <!-- Key Insights Cards -->
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Key Insights</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {% for insight in insights.insights %}
+        <div class="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition">
+            <h3 class="font-semibold text-gray-900 mb-2">{{ insight.title }}</h3>
+            <p class="text-sm text-gray-600">{{ insight.description }}</p>
+            {% if insight.type == 'most_popular' %}
+            <a href="{{ url_for('resources.resource_detail', resource_id=insight.resource_id) }}" 
+               class="mt-2 inline-block text-sm text-indigo-600 hover:text-indigo-700">
+                View Resource →
+            </a>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Top Resources -->
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Top 5 Most Reserved Resources</h2>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bookings</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for resource in summary.data.top_resources %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold">
+                            #{{ loop.index }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <a href="{{ url_for('resources.resource_detail', resource_id=resource.resource_id) }}" 
+                           class="text-indigo-600 hover:text-indigo-700 font-medium">
+                            {{ resource.title }}
+                        </a>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ resource.category or 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ resource.location or 'N/A' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">{{ resource.booking_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Statistics Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <!-- Booking Statistics -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Booking Statistics</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Total:</span>
+                    <span class="font-semibold">{{ summary.data.booking_stats.total_bookings or 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-green-600">Approved:</span>
+                    <span class="font-semibold">{{ summary.data.booking_stats.approved or 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-yellow-600">Pending:</span>
+                    <span class="font-semibold">{{ summary.data.booking_stats.pending or 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-red-600">Rejected:</span>
+                    <span class="font-semibold">{{ summary.data.booking_stats.rejected or 0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- User Activity -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">User Activity</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Active Users:</span>
+                    <span class="font-semibold">{{ summary.data.user_activity.active_users or 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Total Bookings:</span>
+                    <span class="font-semibold">{{ summary.data.user_activity.total_bookings or 0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Reviews -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Reviews</h3>
+            <div class="space-y-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Total Reviews:</span>
+                    <span class="font-semibold">{{ summary.data.reviews.total_reviews or 0 }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Avg Rating:</span>
+                    <span class="font-semibold">
+                        {% if summary.data.reviews.avg_rating %}
+                            {{ "%.1f"|format(summary.data.reviews.avg_rating) }} ⭐
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-600">Resources Reviewed:</span>
+                    <span class="font-semibold">{{ summary.data.reviews.resources_reviewed or 0 }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Breakdown -->
+        <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">Top Category</h3>
+            {% if summary.data.categories %}
+            <div class="space-y-2">
+                <div class="font-semibold text-indigo-600">{{ summary.data.categories[0].category }}</div>
+                <div class="text-sm text-gray-600">
+                    {{ summary.data.categories[0].booking_count }} bookings
+                </div>
+                <div class="text-sm text-gray-600">
+                    {{ summary.data.categories[0].resource_count }} resources
+                </div>
+            </div>
+            {% else %}
+            <p class="text-gray-500 text-sm">No category data available</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Category Breakdown Table -->
+    {% if summary.data.categories %}
+    <h2 class="text-2xl font-bold text-gray-900 mb-4">Category Breakdown</h2>
+    <div class="bg-white border border-gray-200 rounded-lg overflow-hidden mb-8">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Category</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resources</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bookings</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                {% for category in summary.data.categories %}
+                <tr>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ category.category or 'Uncategorized' }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ category.resource_count }}</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{{ category.booking_count }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <!-- Actions -->
+    <div class="flex gap-4 mt-8">
+        <a href="{{ url_for('summaries.generate_summary') }}" 
+           class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 font-semibold">
+            <i class="fas fa-sync mr-2"></i>Refresh Summary
+        </a>
+        <a href="{{ url_for('admin.admin_dashboard') }}" 
+           class="bg-gray-200 text-gray-700 px-6 py-3 rounded-lg hover:bg-gray-300 font-semibold">
+            Back to Dashboard
+        </a>
+    </div>
+</div>
+{% endblock %}
+

@@ -9,6 +9,7 @@ from src.controllers.booking_routes import booking_bp
 from src.controllers.message_routes import message_bp
 from src.controllers.resource_routes import resource_bp
 from src.controllers.review_routes import review_bp
+from src.controllers.summary_routes import summary_bp
 from src.data_access.user_dal import UserDAL
 from src.extensions import bcrypt, csrf, db, login_manager
 from src.models import Base, User, init_db
@@ -74,11 +75,39 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.register_blueprint(message_bp, url_prefix='/messages')
     app.register_blueprint(review_bp, url_prefix='/reviews')
     app.register_blueprint(admin_bp, url_prefix='/admin')
+    app.register_blueprint(summary_bp, url_prefix='/summaries')
 
     @app.route('/')
     def index():
         from flask import redirect, url_for
         return redirect(url_for('resources.list_resources'))
+
+    @app.context_processor
+    def inject_unread_count():
+        """Inject unread message count into all templates."""
+        from flask_login import current_user
+        from sqlalchemy.orm import sessionmaker
+        from sqlalchemy import text
+        
+        unread_count = 0
+        if current_user.is_authenticated:
+            try:
+                Session = sessionmaker(bind=db.engine)
+                session = Session()
+                try:
+                    # Count messages received by current user (simplified - no read status in current schema)
+                    result = session.execute(
+                        text("SELECT COUNT(*) FROM messages WHERE receiver_id = :user_id"),
+                        {"user_id": current_user.user_id}
+                    )
+                    unread_count = result.scalar() or 0
+                finally:
+                    session.close()
+            except Exception:
+                # If there's any error, default to 0
+                unread_count = 0
+        
+        return dict(unread_message_count=unread_count)
 
     with app.app_context():
         init_db(db.engine)
