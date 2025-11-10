@@ -21,7 +21,7 @@
             <i class="fas fa-robot mr-2 text-indigo-600"></i>
             AI-Generated Summary
         </h2>
-        <div class="prose max-w-none text-gray-700 whitespace-pre-wrap">{{ summary.ai_summary }}</div>
+        <div class="prose max-w-none text-gray-700 markdown-content">{{ summary_html | safe }}</div>
     </div>
 
     <!-- Key Insights Cards -->
@@ -198,5 +198,34 @@
         </a>
     </div>
 </div>
+<style>
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4 {
+    font-weight: 700;
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+.markdown-content ul {
+    list-style-type: disc;
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+.markdown-content ol {
+    list-style-type: decimal;
+    margin-left: 1.5rem;
+    margin-bottom: 1rem;
+}
+.markdown-content p {
+    margin-bottom: 1rem;
+}
+.markdown-content blockquote {
+    border-left: 4px solid #6366f1;
+    padding-left: 1rem;
+    color: #4b5563;
+    font-style: italic;
+}
+</style>
 {% endblock %}
 

@@ -14,4 +14,6 @@ numpy
 scikit-learn
 mcp>=0.9.0
 requests
+markdown
+bleach
 

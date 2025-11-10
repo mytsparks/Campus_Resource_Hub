@@ -8,6 +8,8 @@ from flask_login import current_user, login_required
 from src.controllers.auth_routes import get_db_session
 from pathlib import Path
 import os
+from markdown import markdown
+import bleach
 
 summary_bp = Blueprint('summaries', __name__)
 
@@ -40,10 +42,19 @@ def generate_summary():
         generator = SummaryGenerator(db_path, llm_config)
         summary = generator.generate_summary()
         insights = generator.generate_insights()
+        summary_markdown = ""
+        if summary.get('ai_summary'):
+            raw_html = markdown(summary['ai_summary'], extensions=['extra', 'sane_lists'])
+            allowed_tags = bleach.sanitizer.ALLOWED_TAGS.union({'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'hr', 'code', 'pre', 'strong', 'em', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote'})
+            allowed_attrs = dict(bleach.sanitizer.ALLOWED_ATTRIBUTES)
+            allowed_attrs.update({'a': ['href', 'title', 'target', 'rel']})
+            cleaned_html = bleach.clean(raw_html, tags=allowed_tags, attributes=allowed_attrs, strip=True)
+            summary_markdown = bleach.linkify(cleaned_html)
         
         return render_template(
             'admin/summary_report.html',
             summary=summary,
+            summary_html=summary_markdown,
             insights=insights
         )
     
