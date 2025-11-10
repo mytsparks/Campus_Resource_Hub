@@ -168,8 +168,18 @@ def list_resources():
         if sort_by == 'name':
             resources = sorted(resources, key=lambda r: r.get('title', '').lower())
         elif sort_by == 'most_booked':
-            # Sort by number of bookings (would need join, simplified for now)
-            resources = sorted(resources, key=lambda r: r.get('booking_count', 0), reverse=True)
+            # Sort by number of bookings - query actual booking counts
+            from sqlalchemy import text
+            resources_with_counts = []
+            for resource_dict in resources:
+                booking_count_result = session.execute(
+                    text("SELECT COUNT(*) FROM bookings WHERE resource_id = :resource_id AND status IN ('approved', 'pending', 'completed')"),
+                    {"resource_id": resource_dict['resource_id']}
+                )
+                booking_count = booking_count_result.scalar() or 0
+                resource_dict['booking_count'] = booking_count
+                resources_with_counts.append(resource_dict)
+            resources = sorted(resources_with_counts, key=lambda r: r.get('booking_count', 0), reverse=True)
         elif sort_by == 'top_rated':
             # Sort by average rating
             from src.data_access.review_dal import ReviewDAL
@@ -180,7 +190,10 @@ def list_resources():
                 resource_dict['avg_rating'] = stats['avg_rating']
                 resources_with_ratings.append(resource_dict)
             resources = sorted(resources_with_ratings, key=lambda r: r.get('avg_rating', 0), reverse=True)
-        # 'recent' is default (already sorted by created_at DESC in DAL)
+        elif sort_by == 'recent':
+            # Sort by created_at DESC (most recent first)
+            resources = sorted(resources, key=lambda r: r.get('created_at') or '', reverse=True)
+        # Default is already handled
 
     return render_template(
         'index.html',
@@ -232,6 +245,20 @@ def resource_detail(resource_id: int):
             {"resource_id": resource_id}
         )
         equipment = [row[0] for row in equipment_result]
+        
+        # Get existing bookings for calendar display
+        from src.data_access.booking_dal import BookingDAL
+        booking_dal = BookingDAL(session)
+        existing_bookings = booking_dal.get_bookings_for_resource(resource_id)
+        # Convert to JSON-serializable format
+        bookings_data = []
+        for booking in existing_bookings:
+            if booking.start_datetime and booking.end_datetime:
+                bookings_data.append({
+                    'start': booking.start_datetime.isoformat() if hasattr(booking.start_datetime, 'isoformat') else str(booking.start_datetime),
+                    'end': booking.end_datetime.isoformat() if hasattr(booking.end_datetime, 'isoformat') else str(booking.end_datetime),
+                    'status': booking.status
+                })
 
     # Create a simple object-like structure for the template
     class ResourceObj:
@@ -241,7 +268,7 @@ def resource_detail(resource_id: int):
     
     resource_obj = ResourceObj(resource_dict)
 
-    return render_template('resources/detail.html', resource=resource_obj, reviews=reviews, rating_stats=rating_stats, equipment=equipment)
+    return render_template('resources/detail.html', resource=resource_obj, reviews=reviews, rating_stats=rating_stats, equipment=equipment, existing_bookings=bookings_data)
 
 
 @resource_bp.route('/create', methods=['GET', 'POST'])

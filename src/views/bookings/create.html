@@ -1,36 +1,60 @@
 {% extends "base.html" %}
 {% block title %}Book Resource{% endblock %}
 {% block content %}
-<div class="bg-white shadow-xl rounded-xl p-8 max-w-2xl mx-auto">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<div class="bg-white shadow-xl rounded-xl p-8 max-w-4xl mx-auto">
     <h1 class="text-3xl font-bold text-gray-900 mb-2">Book: {{ resource.title }}</h1>
     <p class="text-gray-600 mb-6">{{ resource.location }}</p>
     
     <form method="POST" action="{{ url_for('bookings.create_booking', resource_id=resource.resource_id) }}" class="space-y-6">
         {{ form.hidden_tag() }}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-                <label for="start_datetime" class="block text-sm font-medium text-gray-700 mb-1">Start Date & Time</label>
-                <input type="datetime-local" id="start_datetime" name="start_datetime" required 
-                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Calendar View -->
+            <div class="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">Select Date & Time</h2>
+                <div class="mb-4">
+                    <div id="calendar-preview" class="bg-white p-4 rounded-lg border border-gray-300 min-h-[300px] flex items-center justify-center text-gray-500">
+                        <p>Select dates below to see calendar</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label for="start_datetime" class="block text-sm font-medium text-gray-700 mb-1">Start Date & Time</label>
+                        <input type="text" id="start_datetime" name="start_datetime" required 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Select start time">
+                    </div>
+                    <div>
+                        <label for="end_datetime" class="block text-sm font-medium text-gray-700 mb-1">End Date & Time</label>
+                        <input type="text" id="end_datetime" name="end_datetime" required 
+                               class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
+                               placeholder="Select end time">
+                    </div>
+                </div>
             </div>
-            <div>
-                <label for="end_datetime" class="block text-sm font-medium text-gray-700 mb-1">End Date & Time</label>
-                <input type="datetime-local" id="end_datetime" name="end_datetime" required 
-                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500">
+            
+            <!-- Booking Form -->
+            <div class="space-y-4">
+                <div>
+                    <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message to Owner (Optional)</label>
+                    <textarea id="message" name="message" rows="4" 
+                              class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" 
+                              placeholder="Add a message for the owner..."></textarea>
+                </div>
+
+                <button type="submit" class="w-full bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition duration-150">
+                    Request Booking
+                </button>
+                
+                <a href="{{ url_for('resources.resource_detail', resource_id=resource.resource_id) }}" 
+                   class="block text-center text-indigo-600 hover:text-indigo-700">
+                    ← Back to Resource
+                </a>
             </div>
         </div>
-
-        <div>
-            <label for="message" class="block text-sm font-medium text-gray-700 mb-1">Message to Owner (Optional)</label>
-            <textarea id="message" name="message" rows="3" 
-                      class="w-full p-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500" 
-                      placeholder="Add a message for the owner..."></textarea>
-        </div>
-
-        <button type="submit" class="w-full bg-green-600 text-white p-3 rounded-lg font-semibold hover:bg-green-700 transition duration-150">
-            Request Booking
-        </button>
     </form>
 
     {% if show_waitlist %}
@@ -49,11 +73,113 @@
         </form>
     </div>
     {% endif %}
-
-    <div class="mt-6">
-        <a href="{{ url_for('resources.resource_detail', resource_id=resource.resource_id) }}" 
-           class="text-indigo-600 hover:text-indigo-700">← Back to Resource</a>
-    </div>
 </div>
-{% endblock %}
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Existing bookings data from server
+    const existingBookings = {{ existing_bookings | tojson }};
+    
+    // Disable dates that are already booked
+    const disabledDates = [];
+    existingBookings.forEach(function(booking) {
+        if (booking.status === 'approved' || booking.status === 'pending') {
+            const start = new Date(booking.start);
+            const end = new Date(booking.end);
+            // Mark all dates in the range as disabled
+            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+                disabledDates.push(new Date(d));
+            }
+        }
+    });
+    
+    // Initialize Flatpickr for date/time selection
+    const startPicker = flatpickr("#start_datetime", {
+        enableTime: true,
+        dateFormat: "Y-m-d H:i",
+        time_24hr: true,
+        minDate: "today",
+        disable: disabledDates,
+        onChange: function(selectedDates, dateStr) {
+            updateCalendarPreview();
+            // Auto-set end time to 1 hour after start if not set
+            if (selectedDates.length > 0 && !endPicker.input.value) {
+                const endDate = new Date(selectedDates[0]);
+                endDate.setHours(endDate.getHours() + 1);
+                endPicker.setDate(endDate);
+            }
+        }
+    });
+    
+    const endPicker = flatpickr("#end_datetime", {
+        enableTime: true,
+        dateFormat: "Y-m-d H:i",
+        time_24hr: true,
+        minDate: "today",
+        disable: disabledDates,
+        onChange: function() {
+            updateCalendarPreview();
+        }
+    });
+    
+    function updateCalendarPreview() {
+        const start = startPicker.input.value;
+        const end = endPicker.input.value;
+        const preview = document.getElementById('calendar-preview');
+        
+        if (start && end) {
+            const startDate = new Date(start.replace(' ', 'T'));
+            const endDate = new Date(end.replace(' ', 'T'));
+            const duration = Math.round((endDate - startDate) / (1000 * 60)); // minutes
+            
+            // Check for conflicts
+            let hasConflict = false;
+            existingBookings.forEach(function(booking) {
+                if (booking.status === 'approved' || booking.status === 'pending') {
+                    const bookStart = new Date(booking.start);
+                    const bookEnd = new Date(booking.end);
+                    if ((startDate >= bookStart && startDate < bookEnd) || 
+                        (endDate > bookStart && endDate <= bookEnd) ||
+                        (startDate <= bookStart && endDate >= bookEnd)) {
+                        hasConflict = true;
+                    }
+                }
+            });
+            
+            preview.innerHTML = `
+                <div class="text-center">
+                    <p class="text-lg font-semibold text-gray-800 mb-2">Selected Booking</p>
+                    <p class="text-sm text-gray-600 mb-1"><strong>Start:</strong> ${startDate.toLocaleString()}</p>
+                    <p class="text-sm text-gray-600 mb-1"><strong>End:</strong> ${endDate.toLocaleString()}</p>
+                    <p class="text-sm text-indigo-600 font-medium mt-2">Duration: ${duration} minutes</p>
+                    ${hasConflict ? '<p class="text-sm text-red-600 font-medium mt-2">⚠️ This time conflicts with an existing booking</p>' : ''}
+                </div>
+            `;
+        } else if (start) {
+            preview.innerHTML = `
+                <div class="text-center">
+                    <p class="text-sm text-gray-600">Start time selected. Please select end time.</p>
+                </div>
+            `;
+        } else {
+            preview.innerHTML = `
+                <p class="text-gray-500">Select dates above to see booking preview</p>
+            `;
+        }
+    }
+    
+    // Display existing bookings in calendar preview
+    if (existingBookings.length > 0) {
+        const preview = document.getElementById('calendar-preview');
+        let bookingsList = '<div class="text-left"><p class="font-semibold text-gray-800 mb-2">Existing Bookings:</p><ul class="text-sm space-y-1">';
+        existingBookings.forEach(function(booking) {
+            const start = new Date(booking.start);
+            const end = new Date(booking.end);
+            bookingsList += `<li class="text-gray-600">${start.toLocaleString()} - ${end.toLocaleString()} (${booking.status})</li>`;
+        });
+        bookingsList += '</ul></div>';
+        preview.innerHTML = bookingsList;
+    }
+});
+</script>
+{% endblock %}

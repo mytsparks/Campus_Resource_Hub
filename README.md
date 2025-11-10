@@ -381,7 +381,7 @@ export LLM_MODEL=claude-3-sonnet-20240229
 export LLM_API_KEY=your-api-key-here
 ```
 
-**Note:** The application is pre-configured with a Gemini API key. To use your own key, set the `LLM_API_KEY` environment variable.
+**Important:** Do not hardcode API keys. Set `LLM_API_KEY` via environment variables or a local `.env` file. See `env.example` for a template. In production (Railway/Render/Heroku), set it in the platform’s environment settings.
 
 #### Using the Summary Generator
 

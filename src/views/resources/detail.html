@@ -104,6 +104,14 @@
                     </button>
                 </form>
                 {% else %}
+                <!-- Calendar View -->
+                <div class="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Availability Calendar</h3>
+                    <div id="resource-calendar" class="text-xs text-gray-600 mb-2 min-h-[100px]">
+                        <p class="text-center py-4">Loading calendar...</p>
+                    </div>
+                </div>
+                
                 <form action="{{ url_for('bookings.create_booking', resource_id=resource.resource_id) }}" method="POST" class="space-y-4">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <div>
@@ -126,6 +134,10 @@
                         Request Booking
                     </button>
                 </form>
+                <a href="{{ url_for('bookings.create_booking', resource_id=resource.resource_id) }}" 
+                   class="block text-center text-sm text-indigo-600 hover:text-indigo-700 mt-2">
+                    Use Full Calendar View →
+                </a>
                 <div class="mt-4 pt-4 border-t border-gray-300">
                     <p class="text-sm text-gray-600 mb-2">Resource fully booked?</p>
                     <a href="{{ url_for('bookings.create_booking', resource_id=resource.resource_id) }}?show_waitlist=true" 
@@ -140,4 +152,32 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const existingBookings = {{ existing_bookings | tojson }};
+    const calendarEl = document.getElementById('resource-calendar');
+    
+    if (existingBookings && existingBookings.length > 0) {
+        let calendarHTML = '<div class="space-y-2">';
+        existingBookings.forEach(function(booking) {
+            const start = new Date(booking.start);
+            const end = new Date(booking.end);
+            const statusColor = booking.status === 'approved' ? 'bg-green-100 text-green-700' : 
+                               booking.status === 'pending' ? 'bg-yellow-100 text-yellow-700' : 
+                               'bg-gray-100 text-gray-700';
+            calendarHTML += `
+                <div class="p-2 rounded ${statusColor} border border-gray-200">
+                    <p class="font-medium text-xs">${start.toLocaleDateString()} ${start.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</p>
+                    <p class="text-xs opacity-75">${booking.status}</p>
+                </div>
+            `;
+        });
+        calendarHTML += '</div>';
+        calendarEl.innerHTML = calendarHTML;
+    } else {
+        calendarEl.innerHTML = '<p class="text-center text-gray-500 py-4">No bookings yet. This resource is available!</p>';
+    }
+});
+</script>
 {% endblock %}

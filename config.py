@@ -17,6 +17,7 @@ class Config:
     # LLM Configuration (Google Gemini - Default)
     LLM_PROVIDER = os.environ.get('LLM_PROVIDER', 'gemini')
     LLM_MODEL = os.environ.get('LLM_MODEL', 'gemini-2.0-flash')  # Latest stable Gemini model
-    LLM_API_KEY = os.environ.get('LLM_API_KEY', 'AIzaSyAXgN9mtjViENMwG92Ymbb749wt4Ip3bLs')
+    # IMPORTANT: Never hardcode API keys. Set via environment variables (.env or platform env)
+    LLM_API_KEY = os.environ.get('LLM_API_KEY')
     OLLAMA_BASE_URL = os.environ.get('OLLAMA_BASE_URL', 'http://localhost:11434')
 

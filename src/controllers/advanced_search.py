@@ -1,56 +1,86 @@
-"""Advanced search using simple embedding-based retrieval (placeholder for future implementation)."""
+"""Advanced search using TF-IDF embedding-based retrieval."""
 from typing import List
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+import numpy as np
 
 from src.models import Resource
 
 
-def generate_resource_embedding(resource: Resource) -> List[float]:
-    """
-    Generate a simple embedding for a resource using TF-IDF-like features.
-    This is a placeholder for more sophisticated embedding models.
-    """
-    # Simple feature vector: [title_length, description_length, has_capacity, category_encoded]
-    features = [
-        len(resource.title or ''),
-        len(resource.description or ''),
-        1.0 if resource.capacity else 0.0,
-        hash(resource.category or '') % 100 / 100.0,  # Simple category encoding
-    ]
-    return features
+def build_resource_text(resource: Resource) -> str:
+    """Build a combined text representation of a resource for embedding."""
+    parts = []
+    if resource.title:
+        parts.append(resource.title)
+    if resource.description:
+        parts.append(resource.description)
+    if resource.category:
+        parts.append(resource.category)
+    if resource.location:
+        parts.append(resource.location)
+    # Add capacity as text for better matching
+    if resource.capacity:
+        parts.append(f"capacity {resource.capacity}")
+    return " ".join(parts).lower()
 
 
-def cosine_similarity(vec1: List[float], vec2: List[float]) -> float:
-    """Calculate cosine similarity between two vectors."""
-    import math
-    dot_product = sum(a * b for a, b in zip(vec1, vec2))
-    magnitude1 = math.sqrt(sum(a * a for a in vec1))
-    magnitude2 = math.sqrt(sum(a * a for a in vec2))
-    if magnitude1 == 0 or magnitude2 == 0:
-        return 0.0
-    return dot_product / (magnitude1 * magnitude2)
-
-
-def search_by_similarity(query_text: str, resources: List[Resource], top_k: int = 10) -> List[Resource]:
+def search_by_similarity(query_text: str, resources: List[Resource], top_k: int = 50) -> List[Resource]:
     """
-    Search resources by semantic similarity to query text.
-    This is a simplified implementation - can be enhanced with proper embeddings.
+    Search resources by semantic similarity using TF-IDF vectorization.
+    Uses scikit-learn's TfidfVectorizer for proper text-based similarity matching.
     """
-    # Generate query embedding (simplified)
-    query_features = [
-        len(query_text),
-        len(query_text) * 0.5,  # Simplified
-        0.5,  # Neutral
-        hash(query_text.lower()) % 100 / 100.0,
-    ]
+    if not resources or not query_text:
+        return resources[:top_k]
     
-    # Calculate similarity for each resource
-    scored_resources = []
-    for resource in resources:
-        resource_embedding = generate_resource_embedding(resource)
-        similarity = cosine_similarity(query_features, resource_embedding)
-        scored_resources.append((similarity, resource))
+    # Build text representations
+    resource_texts = [build_resource_text(r) for r in resources]
     
-    # Sort by similarity and return top_k
-    scored_resources.sort(key=lambda x: x[0], reverse=True)
-    return [resource for _, resource in scored_resources[:top_k]]
+    # Combine query with resource texts for TF-IDF
+    all_texts = [query_text.lower()] + resource_texts
+    
+    try:
+        # Create TF-IDF vectorizer
+        vectorizer = TfidfVectorizer(
+            max_features=1000,
+            stop_words='english',
+            ngram_range=(1, 2),  # Use unigrams and bigrams
+            min_df=1,
+            max_df=0.95
+        )
+        
+        # Fit and transform
+        tfidf_matrix = vectorizer.fit_transform(all_texts)
+        
+        # Query vector is first row, resource vectors are the rest
+        query_vector = tfidf_matrix[0:1]
+        resource_vectors = tfidf_matrix[1:]
+        
+        # Calculate cosine similarity
+        similarities = cosine_similarity(query_vector, resource_vectors).flatten()
+        
+        # Pair resources with their similarity scores
+        scored_resources = list(zip(similarities, resources))
+        
+        # Sort by similarity (descending) and return top_k
+        scored_resources.sort(key=lambda x: x[0], reverse=True)
+        
+        # Return resources, filtering out very low similarity scores
+        threshold = 0.01  # Minimum similarity threshold
+        filtered = [r for score, r in scored_resources if score >= threshold]
+        
+        return filtered[:top_k] if filtered else [r for _, r in scored_resources[:top_k]]
+        
+    except Exception as e:
+        # Fallback to simple keyword matching if TF-IDF fails
+        print(f"TF-IDF search error: {e}, falling back to keyword search")
+        query_lower = query_text.lower()
+        scored = []
+        for resource in resources:
+            text = build_resource_text(resource)
+            # Simple keyword matching score
+            score = sum(1 for word in query_lower.split() if word in text) / max(len(query_lower.split()), 1)
+            scored.append((score, resource))
+        scored.sort(key=lambda x: x[0], reverse=True)
+        return [r for _, r in scored[:top_k]]
 

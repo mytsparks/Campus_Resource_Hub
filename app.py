@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from flask import Flask
+from dotenv import load_dotenv
 
 from config import Config
 from src.controllers.admin_routes import admin_bp
@@ -39,6 +40,12 @@ def _seed_initial_admin() -> None:
 
 def create_app(config_class: type[Config] = Config) -> Flask:
     """Initializes and configures the Flask application."""
+
+    # Load environment variables from .env if present (local dev)
+    try:
+        load_dotenv()
+    except Exception:
+        pass
 
     app = Flask(__name__, template_folder='src/views', static_folder='src/static')
     app.config.from_object(config_class)
@@ -83,31 +90,119 @@ def create_app(config_class: type[Config] = Config) -> Flask:
         return redirect(url_for('resources.list_resources'))
 
     @app.context_processor
-    def inject_unread_count():
-        """Inject unread message count into all templates."""
+    def inject_notifications():
+        """Inject notification data into all templates."""
         from flask_login import current_user
         from sqlalchemy.orm import sessionmaker
         from sqlalchemy import text
+        from datetime import datetime, timedelta
         
+        notifications = []
         unread_count = 0
+        
         if current_user.is_authenticated:
             try:
                 Session = sessionmaker(bind=db.engine)
                 session = Session()
                 try:
-                    # Count messages received by current user (simplified - no read status in current schema)
-                    result = session.execute(
-                        text("SELECT COUNT(*) FROM messages WHERE receiver_id = :user_id"),
-                        {"user_id": current_user.user_id}
+                    user_id = current_user.user_id
+                    
+                    # Get recent messages (last 7 days)
+                    week_ago = (datetime.now() - timedelta(days=7)).isoformat()
+                    messages_result = session.execute(
+                        text("""
+                            SELECT m.*, u.name as sender_name, r.title as resource_title
+                            FROM messages m
+                            LEFT JOIN users u ON m.sender_id = u.user_id
+                            LEFT JOIN bookings b ON m.thread_id = b.booking_id
+                            LEFT JOIN resources r ON b.resource_id = r.resource_id
+                            WHERE m.receiver_id = :user_id AND m.timestamp >= :week_ago
+                            ORDER BY m.timestamp DESC
+                            LIMIT 10
+                        """),
+                        {"user_id": user_id, "week_ago": week_ago}
                     )
-                    unread_count = result.scalar() or 0
+                    
+                    # Get pending booking approvals (for resource owners)
+                    pending_bookings_result = session.execute(
+                        text("""
+                            SELECT b.*, r.title as resource_title, u.name as requester_name
+                            FROM bookings b
+                            JOIN resources r ON b.resource_id = r.resource_id
+                            JOIN users u ON b.requester_id = u.user_id
+                            WHERE r.owner_id = :user_id AND b.status = 'pending'
+                            ORDER BY b.created_at DESC
+                            LIMIT 5
+                        """),
+                        {"user_id": user_id}
+                    )
+                    
+                    # Get booking status updates (approved/rejected)
+                    booking_updates_result = session.execute(
+                        text("""
+                            SELECT b.*, r.title as resource_title
+                            FROM bookings b
+                            JOIN resources r ON b.resource_id = r.resource_id
+                            WHERE b.requester_id = :user_id 
+                            AND b.status IN ('approved', 'rejected')
+                            AND b.updated_at >= :week_ago
+                            ORDER BY b.updated_at DESC
+                            LIMIT 5
+                        """),
+                        {"user_id": user_id, "week_ago": week_ago}
+                    )
+                    
+                    from flask import url_for
+                    
+                    # Process messages
+                    for row in messages_result:
+                        notifications.append({
+                            'type': 'message',
+                            'title': f'New message from {row.sender_name or "User"}',
+                            'message': f'Regarding: {row.resource_title or "Resource"}',
+                            'timestamp': row.timestamp,
+                            'link': url_for('messages.view_thread', thread_id=row.thread_id) if row.thread_id else url_for('messages.inbox')
+                        })
+                    
+                    # Process pending bookings (for owners)
+                    for row in pending_bookings_result:
+                        notifications.append({
+                            'type': 'booking_request',
+                            'title': f'Booking request from {row.requester_name}',
+                            'message': f'{row.resource_title} - Pending approval',
+                            'timestamp': row.created_at,
+                            'link': url_for('bookings.my_bookings')
+                        })
+                    
+                    # Process booking updates
+                    for row in booking_updates_result:
+                        status_text = 'approved' if row.status == 'approved' else 'rejected'
+                        notifications.append({
+                            'type': 'booking_update',
+                            'title': f'Booking {status_text}',
+                            'message': f'{row.resource_title} - Your booking was {status_text}',
+                            'timestamp': row.updated_at,
+                            'link': url_for('bookings.my_bookings')
+                        })
+                    
+                    # Sort by timestamp (most recent first)
+                    notifications.sort(key=lambda x: x['timestamp'] if x['timestamp'] else datetime.min, reverse=True)
+                    notifications = notifications[:10]  # Limit to 10 most recent
+                    
+                    # Count unread (all notifications are considered unread for now)
+                    unread_count = len(notifications)
+                    
                 finally:
                     session.close()
-            except Exception:
-                # If there's any error, default to 0
+            except Exception as e:
+                print(f"Error loading notifications: {e}")
                 unread_count = 0
         
-        return dict(unread_message_count=unread_count)
+        return dict(
+            notifications=notifications,
+            unread_message_count=unread_count,
+            unread_notification_count=unread_count
+        )
 
     with app.app_context():
         init_db(db.engine)

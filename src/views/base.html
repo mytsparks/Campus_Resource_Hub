@@ -85,15 +85,60 @@
                        class="text-white hover:text-indigo-200 font-medium transition">
                         Bookings
                     </a>
-                    <!-- Notifications Bell -->
+                    <!-- Notifications Bell with Dropdown -->
                     <div class="relative">
-                        <a href="{{ url_for('messages.inbox') }}" 
-                           class="text-white hover:text-indigo-200 transition relative">
+                        <button onclick="toggleNotificationDropdown()" class="text-white hover:text-indigo-200 transition relative focus:outline-none">
                             <i class="fas fa-bell text-xl"></i>
-                            {% if unread_message_count > 0 %}
-                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ unread_message_count }}</span>
+                            {% if unread_notification_count > 0 %}
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ unread_notification_count }}</span>
                             {% endif %}
-                        </a>
+                        </button>
+                        <div id="notificationDropdown" class="dropdown-menu" style="min-width: 320px; max-width: 400px; max-height: 500px; overflow-y: auto;">
+                            <div class="px-4 py-3 border-b border-gray-200 bg-indigo-50">
+                                <h3 class="font-semibold text-gray-900">Notifications</h3>
+                                <p class="text-xs text-gray-500">{{ unread_notification_count }} unread</p>
+                            </div>
+                            <div class="max-h-96 overflow-y-auto">
+                                {% if notifications %}
+                                    {% for notification in notifications %}
+                                    <a href="{{ notification.link }}" class="dropdown-item hover:bg-indigo-50">
+                                        <div class="flex items-start">
+                                            <div class="flex-shrink-0 mr-3">
+                                                {% if notification.type == 'message' %}
+                                                    <i class="fas fa-envelope text-indigo-600"></i>
+                                                {% elif notification.type == 'booking_request' %}
+                                                    <i class="fas fa-calendar-plus text-yellow-600"></i>
+                                                {% elif notification.type == 'booking_update' %}
+                                                    <i class="fas fa-check-circle text-green-600"></i>
+                                                {% else %}
+                                                    <i class="fas fa-bell text-gray-600"></i>
+                                                {% endif %}
+                                            </div>
+                                            <div class="flex-grow min-w-0">
+                                                <p class="text-sm font-medium text-gray-900">{{ notification.title }}</p>
+                                                <p class="text-xs text-gray-600 truncate">{{ notification.message }}</p>
+                                                {% if notification.timestamp %}
+                                                <p class="text-xs text-gray-400 mt-1">
+                                                    {{ notification.timestamp.strftime('%b %d, %Y %I:%M %p') if hasattr(notification.timestamp, 'strftime') else notification.timestamp }}
+                                                </p>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </a>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="px-4 py-8 text-center">
+                                        <i class="fas fa-bell-slash text-gray-300 text-3xl mb-2"></i>
+                                        <p class="text-sm text-gray-500">No notifications</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            <div class="border-t border-gray-200 px-4 py-2 bg-gray-50">
+                                <a href="{{ url_for('messages.inbox') }}" class="text-xs text-indigo-600 hover:text-indigo-700 font-medium">
+                                    View All Messages →
+                                </a>
+                            </div>
+                        </div>
                     </div>
                     <!-- User Profile Dropdown -->
                     <div class="relative">
@@ -145,14 +190,31 @@
         function toggleDropdown() {
             const dropdown = document.getElementById('userDropdown');
             dropdown.classList.toggle('show');
+            // Close notification dropdown if open
+            const notifDropdown = document.getElementById('notificationDropdown');
+            notifDropdown.classList.remove('show');
         }
         
-        // Close dropdown when clicking outside
+        function toggleNotificationDropdown() {
+            const dropdown = document.getElementById('notificationDropdown');
+            dropdown.classList.toggle('show');
+            // Close user dropdown if open
+            const userDropdown = document.getElementById('userDropdown');
+            userDropdown.classList.remove('show');
+        }
+        
+        // Close dropdowns when clicking outside
         document.addEventListener('click', function(event) {
-            const dropdown = document.getElementById('userDropdown');
-            const button = event.target.closest('button[onclick="toggleDropdown()"]');
-            if (!button && !dropdown.contains(event.target)) {
-                dropdown.classList.remove('show');
+            const userDropdown = document.getElementById('userDropdown');
+            const notifDropdown = document.getElementById('notificationDropdown');
+            const userButton = event.target.closest('button[onclick="toggleDropdown()"]');
+            const notifButton = event.target.closest('button[onclick="toggleNotificationDropdown()"]');
+            
+            if (!userButton && !userDropdown.contains(event.target)) {
+                userDropdown.classList.remove('show');
+            }
+            if (!notifButton && !notifDropdown.contains(event.target)) {
+                notifDropdown.classList.remove('show');
             }
         });
     </script>

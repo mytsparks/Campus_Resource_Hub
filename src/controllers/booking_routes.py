@@ -95,7 +95,20 @@ def create_booking(resource_id: int):
                 flash('This time slot is already booked. You can join the waitlist below.', 'warning')
                 return render_template('bookings/create.html', form=form, resource=resource, show_waitlist=True)
 
-    return render_template('bookings/create.html', form=form, resource=resource, show_waitlist=False)
+        # Get existing bookings for calendar display
+        booking_dal = BookingDAL(session)
+        existing_bookings = booking_dal.get_bookings_for_resource(resource_id)
+        # Convert to JSON-serializable format
+        bookings_data = []
+        for booking in existing_bookings:
+            if booking.start_datetime and booking.end_datetime:
+                bookings_data.append({
+                    'start': booking.start_datetime.isoformat() if hasattr(booking.start_datetime, 'isoformat') else str(booking.start_datetime),
+                    'end': booking.end_datetime.isoformat() if hasattr(booking.end_datetime, 'isoformat') else str(booking.end_datetime),
+                    'status': booking.status
+                })
+    
+    return render_template('bookings/create.html', form=form, resource=resource, show_waitlist=False, existing_bookings=bookings_data)
 
 
 @booking_bp.route('/my-bookings')
