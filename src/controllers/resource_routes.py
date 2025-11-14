@@ -8,6 +8,7 @@ from src.controllers.auth_routes import get_db_session
 from src.data_access.resource_dal import ResourceDAL
 from src.forms.resource_forms import ResourceForm
 from src.models import Resource
+from src.utils.storage import save_uploaded_files
 
 resource_bp = Blueprint('resources', __name__)
 
@@ -16,30 +17,6 @@ def allowed_file(filename):
     """Check if file extension is allowed."""
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in current_app.config['ALLOWED_EXTENSIONS']
-
-
-def save_uploaded_files(files):
-    """Save uploaded files and return comma-separated paths."""
-    if not files:
-        return None
-    
-    saved_paths = []
-    upload_folder = current_app.config['UPLOAD_FOLDER']
-    os.makedirs(upload_folder, exist_ok=True)
-    
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            # Add timestamp to avoid conflicts
-            from datetime import datetime
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
-            filename = timestamp + filename
-            filepath = os.path.join(upload_folder, filename)
-            file.save(filepath)
-            # Store relative path for web access
-            saved_paths.append(f'/static/uploads/{filename}')
-    
-    return ','.join(saved_paths) if saved_paths else None
 
 
 @resource_bp.route('/')
@@ -307,7 +284,7 @@ def create_resource():
         if request.files:
             files = request.files.getlist('images')
             if files and files[0].filename:  # Check if files were actually uploaded
-                image_paths = save_uploaded_files(files)
+                image_paths = save_uploaded_files(files, allowed_file)
 
         # Process availability rules from calendar
         availability_rules = None
@@ -463,7 +440,7 @@ def edit_resource(resource_id: int):
             if request.files:
                 files = request.files.getlist('images')
                 if files and files[0].filename:
-                    new_image_paths = save_uploaded_files(files)
+                    new_image_paths = save_uploaded_files(files, allowed_file)
                     if new_image_paths:
                         image_paths = new_image_paths if not image_paths else f"{image_paths},{new_image_paths}"
             

@@ -19,6 +19,12 @@ class Config:
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max file size
     ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'webp'}
     
+    # Google Cloud Storage settings (for production)
+    USE_GCS = os.environ.get('USE_GCS', 'false').lower() == 'true'
+    GCS_BUCKET_NAME = os.environ.get('GCS_BUCKET_NAME', '')
+    GCS_PROJECT_ID = os.environ.get('GCS_PROJECT_ID', '')
+    # GCS credentials are automatically handled by Cloud Run service account
+    
     # Pagination
     RESOURCES_PER_PAGE = 12
     
