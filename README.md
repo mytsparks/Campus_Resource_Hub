@@ -2,6 +2,12 @@
 
 A full-stack web application for managing campus resource booking and sharing, built with Python/Flask following MVC architecture and AI-First Development practices.
 
+## Cloud Deployment
+
+This app is also deployed on Google Cloud Platform, with a Postgres database hosted on SupaBase.
+
+https://campus-resource-hub-449695188584.europe-west1.run.app/
+
 ## 🚀 Quick Start
 
 ### Prerequisites
