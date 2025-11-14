@@ -213,14 +213,33 @@ def create_app(config_class: type[Config] = Config) -> Flask:
             unread_notification_count=unread_count
         )
 
+    # Initialize database (with error handling for production)
     with app.app_context():
-        init_db(db.engine)
-        _seed_initial_admin()
+        try:
+            init_db(db.engine)
+            _seed_initial_admin()
+        except Exception as e:
+            # Log error but don't crash the app
+            # This allows the app to start even if DB connection fails initially
+            import sys
+            print(f"Warning: Database initialization error: {e}", file=sys.stderr)
+            # In production, you might want to retry or use a fallback
 
     return app
 
 
+# Create the application instance for Elastic Beanstalk
+# This must be named 'application' for EB to find it
+application = create_app()
+
+# Health check endpoint for EB
+@application.route('/health')
+def health():
+    """Health check endpoint for Elastic Beanstalk."""
+    return {'status': 'healthy'}, 200
+
+
 if __name__ == '__main__':
-    application = create_app()
-    application.run(debug=True)
+    # For local development
+    application.run(debug=True, host='0.0.0.0', port=5000)
 
