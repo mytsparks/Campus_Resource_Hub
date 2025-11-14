@@ -50,6 +50,9 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app = Flask(__name__, template_folder='src/views', static_folder='src/static')
     app.config.from_object(config_class)
 
+    # Initialize database
+    # For PostgreSQL connection pooling, SQLALCHEMY_ENGINE_OPTIONS in config
+    # will be used when the engine is created
     db.init_app(app)
     bcrypt.init_app(app)
     csrf.init_app(app)
@@ -241,5 +244,5 @@ def health():
 
 if __name__ == '__main__':
     # For local development
-    application.run(debug=True, host='0.0.0.0', port=5000)
+    application.run(debug=True, host='0.0.0.0', port=5000, threaded=True)
 
