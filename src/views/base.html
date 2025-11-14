@@ -28,6 +28,7 @@
             border-radius: 0.5rem;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
             min-width: 200px;
+            max-width: 90vw;
             z-index: 1000;
         }
         .dropdown-menu.show {
@@ -39,6 +40,7 @@
             color: #374151;
             text-decoration: none;
             border-bottom: 1px solid #f3f4f6;
+            word-wrap: break-word;
         }
         .dropdown-item:last-child {
             border-bottom: none;
@@ -51,6 +53,16 @@
             background-color: #fee2e2;
             color: #dc2626;
         }
+        
+        /* Mobile responsive adjustments */
+        @media (max-width: 640px) {
+            .dropdown-menu {
+                right: 0;
+                left: auto;
+                min-width: 250px;
+                max-width: calc(100vw - 2rem);
+            }
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-screen flex flex-col">
@@ -59,23 +71,23 @@
         <div class="container mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <!-- Left Side: Logo, Title, Home Button -->
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-2 sm:space-x-4">
                     <!-- Logo Box -->
-                    <div class="bg-white px-3 py-2 rounded flex items-center justify-center">
-                        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CRH" class="h-6 w-auto">
+                    <div class="bg-white px-2 sm:px-3 py-2 rounded flex items-center justify-center">
+                        <img src="{{ url_for('static', filename='images/logo.png') }}" alt="CRH" class="h-5 sm:h-6 w-auto">
                     </div>
                     <!-- Title -->
-                    <h1 class="text-xl font-bold hidden sm:block">Campus Resource Hub</h1>
-                    <!-- Home Button -->
+                    <h1 class="text-lg sm:text-xl font-bold hidden sm:block">Campus Resource Hub</h1>
+                    <!-- Home Button - Hidden on mobile, shown on tablet+ -->
                     <a href="{{ url_for('resources.list_resources') }}" 
-                       class="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 font-medium flex items-center space-x-2 transition">
+                       class="hidden md:flex bg-white text-indigo-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-50 font-medium items-center space-x-2 transition">
                         <i class="fas fa-home"></i>
-                        <span>Home</span>
+                        <span class="hidden lg:inline">Home</span>
                     </a>
                 </div>
                 
-                <!-- Right Side: Resources, Bookings, Notifications, User -->
-                <div class="flex items-center space-x-4">
+                <!-- Desktop Navigation - Hidden on mobile -->
+                <div class="hidden lg:flex items-center space-x-4">
                     <a href="{{ url_for('resources.list_resources') }}" 
                        class="text-white hover:text-indigo-200 font-medium transition">
                         Resources
@@ -91,15 +103,21 @@
                         Dashboard
                     </a>
                     {% endif %}
+                    {% endif %}
+                </div>
+                
+                <!-- Right Side: Notifications, User, Mobile Menu -->
+                <div class="flex items-center space-x-2 sm:space-x-4">
+                    {% if current_user.is_authenticated %}
                     <!-- Notifications Bell with Dropdown -->
                     <div class="relative">
-                        <button onclick="toggleNotificationDropdown()" class="text-white hover:text-indigo-200 transition relative focus:outline-none">
-                            <i class="fas fa-bell text-xl"></i>
+                        <button onclick="toggleNotificationDropdown()" class="text-white hover:text-indigo-200 transition relative focus:outline-none p-2">
+                            <i class="fas fa-bell text-lg sm:text-xl"></i>
                             {% if unread_notification_count > 0 %}
-                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">{{ unread_notification_count }}</span>
+                            <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 sm:w-5 sm:h-5 flex items-center justify-center text-[10px] sm:text-xs">{{ unread_notification_count }}</span>
                             {% endif %}
                         </button>
-                        <div id="notificationDropdown" class="dropdown-menu" style="min-width: 320px; max-width: 400px; max-height: 500px; overflow-y: auto;">
+                        <div id="notificationDropdown" class="dropdown-menu" style="min-width: 280px; max-width: 90vw; max-height: 500px; overflow-y: auto; right: 0; left: auto;">
                             <div class="px-4 py-3 border-b border-gray-200 bg-indigo-50">
                                 <h3 class="font-semibold text-gray-900">Notifications</h3>
                                 <p class="text-xs text-gray-500">{{ unread_notification_count }} unread</p>
@@ -149,14 +167,14 @@
                     <!-- User Profile Dropdown -->
                     <div class="relative">
                         <button onclick="toggleDropdown()" class="focus:outline-none focus:ring-2 focus:ring-white rounded-full p-1">
-                            <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-indigo-600 font-bold border-2 border-indigo-300">
+                            <div class="w-8 h-8 sm:w-10 sm:h-10 bg-white rounded-full flex items-center justify-center text-indigo-600 font-bold border-2 border-indigo-300 text-sm sm:text-base">
                                 {{ current_user.name[0].upper() if current_user.name else 'U' }}
                             </div>
                         </button>
-                        <div id="userDropdown" class="dropdown-menu">
+                        <div id="userDropdown" class="dropdown-menu" style="right: 0; left: auto;">
                             <div class="px-4 py-3 border-b border-gray-200">
                                 <p class="text-sm font-semibold text-gray-900">{{ current_user.name or 'User' }}</p>
-                                <p class="text-xs text-gray-500">{{ current_user.email }}</p>
+                                <p class="text-xs text-gray-500 break-words">{{ current_user.email }}</p>
                                 <span class="inline-block mt-1 px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-700 rounded-full">
                                     {{ current_user.role|title }}
                                 </span>
@@ -182,10 +200,58 @@
                         </div>
                     </div>
                     {% else %}
-                    <div class="flex items-center space-x-3">
-                        <a href="{{ url_for('auth.login') }}" class="text-white hover:text-indigo-200 font-medium">Login</a>
-                        <a href="{{ url_for('auth.register') }}" class="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 font-medium">Sign Up</a>
+                    <div class="flex items-center space-x-2 sm:space-x-3">
+                        <a href="{{ url_for('auth.login') }}" class="text-white hover:text-indigo-200 font-medium text-sm sm:text-base">Login</a>
+                        <a href="{{ url_for('auth.register') }}" class="bg-white text-indigo-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-50 font-medium text-sm sm:text-base">Sign Up</a>
                     </div>
+                    {% endif %}
+                    
+                    <!-- Mobile Menu Button -->
+                    <button onclick="toggleMobileMenu()" class="lg:hidden text-white hover:text-indigo-200 focus:outline-none p-2" aria-label="Menu">
+                        <i id="mobileMenuIcon" class="fas fa-bars text-xl"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Mobile Menu - Hidden by default -->
+            <div id="mobileMenu" class="hidden lg:hidden border-t border-indigo-500 pb-4">
+                <div class="flex flex-col space-y-2 pt-4">
+                    <a href="{{ url_for('resources.list_resources') }}" 
+                       class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-home mr-2"></i> Home
+                    </a>
+                    <a href="{{ url_for('resources.list_resources') }}" 
+                       class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-list mr-2"></i> Resources
+                    </a>
+                    {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('bookings.my_bookings') }}" 
+                       class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-calendar-alt mr-2"></i> Bookings
+                    </a>
+                    <a href="{{ url_for('messages.inbox') }}" 
+                       class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-inbox mr-2"></i> Messages
+                    </a>
+                    <a href="{{ url_for('resources.create_resource') }}" 
+                       class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-plus-circle mr-2"></i> Add Resource
+                    </a>
+                    {% if current_user.role == 'admin' %}
+                    <a href="{{ url_for('admin.admin_dashboard') }}" 
+                       class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-cog mr-2"></i> Admin Dashboard
+                    </a>
+                    {% endif %}
+                    {% else %}
+                    <a href="{{ url_for('auth.login') }}" 
+                       class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Login
+                    </a>
+                    <a href="{{ url_for('auth.register') }}" 
+                       class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
+                        <i class="fas fa-user-plus mr-2"></i> Sign Up
+                    </a>
                     {% endif %}
                 </div>
             </div>
@@ -209,18 +275,41 @@
             userDropdown.classList.remove('show');
         }
         
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            const icon = document.getElementById('mobileMenuIcon');
+            menu.classList.toggle('hidden');
+            if (menu.classList.contains('hidden')) {
+                icon.classList.remove('fa-times');
+                icon.classList.add('fa-bars');
+            } else {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            }
+        }
+        
         // Close dropdowns when clicking outside
         document.addEventListener('click', function(event) {
             const userDropdown = document.getElementById('userDropdown');
             const notifDropdown = document.getElementById('notificationDropdown');
+            const mobileMenu = document.getElementById('mobileMenu');
             const userButton = event.target.closest('button[onclick="toggleDropdown()"]');
             const notifButton = event.target.closest('button[onclick="toggleNotificationDropdown()"]');
+            const mobileButton = event.target.closest('button[onclick="toggleMobileMenu()"]');
             
-            if (!userButton && !userDropdown.contains(event.target)) {
+            if (!userButton && userDropdown && !userDropdown.contains(event.target)) {
                 userDropdown.classList.remove('show');
             }
-            if (!notifButton && !notifDropdown.contains(event.target)) {
+            if (!notifButton && notifDropdown && !notifDropdown.contains(event.target)) {
                 notifDropdown.classList.remove('show');
+            }
+            if (!mobileButton && mobileMenu && !mobileMenu.contains(event.target)) {
+                mobileMenu.classList.add('hidden');
+                const icon = document.getElementById('mobileMenuIcon');
+                if (icon) {
+                    icon.classList.remove('fa-times');
+                    icon.classList.add('fa-bars');
+                }
             }
         });
     </script>

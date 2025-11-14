@@ -133,9 +133,9 @@
             {% if resources %}
                 {% for resource in resources %}
                 <!-- Resource Card - Horizontal Layout -->
-                <div class="bg-white rounded-lg shadow-md border border-gray-200 p-4 flex items-center gap-4 hover:shadow-lg transition">
+                <div class="bg-white rounded-lg shadow-md border border-gray-200 p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 hover:shadow-lg transition">
                     <!-- Image on Left -->
-                    <div class="w-32 h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
+                    <div class="w-full sm:w-32 h-48 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
                         {% if resource.images %}
                             <img src="{{ resource.images.split(',')[0] if ',' in resource.images else resource.images }}" 
                                  alt="{{ resource.title }}" 
@@ -148,38 +148,38 @@
                     </div>
                     
                     <!-- Details in Middle -->
-                    <div class="flex-grow min-w-0">
-                        <h3 class="text-lg font-bold text-gray-900 mb-1">{{ resource.title }}</h3>
-                        <p class="text-sm text-gray-600 mb-3 line-clamp-1">
+                    <div class="flex-grow min-w-0 w-full sm:w-auto">
+                        <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-1">{{ resource.title }}</h3>
+                        <p class="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-1">
                             {{ resource.description or 'Modern resource with all necessary amenities' }}
                         </p>
                         <!-- Owner Info -->
                         {% if resource.owner_name %}
                         <div class="flex items-center gap-2 mb-2">
-                            <span class="text-sm text-gray-600">Posted by</span>
-                            <span class="text-sm font-semibold text-gray-800">{{ resource.owner_name }}</span>
+                            <span class="text-xs sm:text-sm text-gray-600">Posted by</span>
+                            <span class="text-xs sm:text-sm font-semibold text-gray-800">{{ resource.owner_name }}</span>
                             {% if current_user.is_authenticated and current_user.user_id != resource.owner_id %}
                             <a href="{{ url_for('messages.message_user', user_id=resource.owner_id) }}" 
                                class="text-indigo-600 hover:text-indigo-800 transition" 
                                title="Message {{ resource.owner_name }}">
-                                <i class="fas fa-envelope"></i>
+                                <i class="fas fa-envelope text-xs sm:text-sm"></i>
                             </a>
                             {% endif %}
                         </div>
                         {% endif %}
-                        <div class="flex flex-wrap items-center gap-4 text-sm text-gray-700">
+                        <div class="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-gray-700">
                             {% if resource.capacity %}
                             <span class="flex items-center">
-                                <i class="fas fa-users mr-2 text-indigo-600"></i>Capacity: {{ resource.capacity }}
+                                <i class="fas fa-users mr-1 sm:mr-2 text-indigo-600"></i>Capacity: {{ resource.capacity }}
                             </span>
                             {% endif %}
                             {% if resource.location %}
                             <span class="flex items-center">
-                                <i class="fas fa-map-marker-alt mr-2 text-indigo-600"></i>{{ resource.location }}
+                                <i class="fas fa-map-marker-alt mr-1 sm:mr-2 text-indigo-600"></i>{{ resource.location }}
                             </span>
                             {% endif %}
                             {% if resource.category %}
-                            <span class="inline-flex items-center px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
+                            <span class="inline-flex items-center px-2 sm:px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">
                                 {{ resource.category }}
                             </span>
                             {% endif %}
@@ -187,9 +187,9 @@
                     </div>
                     
                     <!-- Book Button on Right -->
-                    <div class="flex-shrink-0">
+                    <div class="flex-shrink-0 w-full sm:w-auto">
                         <a href="{{ url_for('resources.resource_detail', resource_id=resource.resource_id) }}" 
-                           class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 font-semibold whitespace-nowrap transition shadow-md">
+                           class="block w-full sm:w-auto bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-indigo-700 font-semibold text-center whitespace-nowrap transition shadow-md text-sm sm:text-base">
                             Book Resource
                         </a>
                     </div>
