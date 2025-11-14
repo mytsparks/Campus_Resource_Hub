@@ -91,6 +91,28 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     def index():
         from flask import redirect, url_for
         return redirect(url_for('resources.list_resources'))
+    
+    @app.context_processor
+    def utility_processor():
+        """Add utility functions to template context."""
+        def get_image_url(images_string):
+            """Extract and clean the first image URL from a comma-separated string."""
+            if not images_string:
+                return None
+            # Split by comma and get first image
+            first_image = images_string.split(',')[0].strip()
+            # Ensure it's a valid URL or path
+            if first_image:
+                return first_image
+            return None
+        
+        def is_gcs_url(url):
+            """Check if URL is a Google Cloud Storage URL."""
+            if not url:
+                return False
+            return url.startswith('https://storage.googleapis.com/') or '.storage.googleapis.com' in url
+        
+        return dict(get_image_url=get_image_url, is_gcs_url=is_gcs_url)
 
     @app.context_processor
     def inject_notifications():

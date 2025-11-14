@@ -73,10 +73,33 @@ def _save_to_gcs(files, allowed_file_func):
                 blob.upload_from_file(file, content_type=file.content_type or 'image/jpeg')
                 
                 # Make blob publicly readable (or use signed URLs for private)
-                blob.make_public()
+                try:
+                    blob.make_public()
+                except Exception as e:
+                    current_app.logger.warning(f"Could not make blob public (may already be public): {e}")
                 
-                # Return public URL
-                saved_paths.append(blob.public_url)
+                # Return public URL - use blob's public_url which handles different GCS URL formats
+                # GCS URLs can be: https://storage.googleapis.com/BUCKET/path or https://BUCKET.storage.googleapis.com/path
+                try:
+                    # Reload blob to ensure public_url is updated after make_public()
+                    blob.reload()
+                    public_url = blob.public_url
+                    
+                    # Verify it's a valid URL format
+                    if not public_url or not public_url.startswith('http'):
+                        # Fallback: construct URL manually
+                        public_url = f"https://storage.googleapis.com/{bucket_name}/uploads/{filename}"
+                        current_app.logger.warning(f"Blob public_url was invalid, using constructed URL: {public_url}")
+                    else:
+                        current_app.logger.debug(f"GCS public URL: {public_url}")
+                except Exception as e:
+                    # Fallback to constructed URL
+                    public_url = f"https://storage.googleapis.com/{bucket_name}/uploads/{filename}"
+                    current_app.logger.warning(f"Error getting blob public_url, using constructed URL: {e}")
+                
+                # Ensure URL is clean (no whitespace, properly encoded)
+                public_url = public_url.strip()
+                saved_paths.append(public_url)
     except ImportError:
         current_app.logger.error("google-cloud-storage not installed. Falling back to local storage.")
         return _save_to_local(files, allowed_file_func)

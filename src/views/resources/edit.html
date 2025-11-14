@@ -70,7 +70,8 @@
             {% if resource.images %}
                 <div class="mb-2">
                     {% for img_path in resource.images.split(',') %}
-                        <img src="{{ img_path }}" alt="Resource image" class="inline-block w-20 h-20 object-cover rounded mr-2 mb-2">
+                        <img src="{{ img_path.strip() }}" alt="Resource image" class="inline-block w-20 h-20 object-cover rounded mr-2 mb-2"
+                             onerror="this.onerror=null; this.style.display='none';">
                     {% endfor %}
                 </div>
             {% endif %}

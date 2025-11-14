@@ -137,9 +137,18 @@
                     <!-- Image on Left -->
                     <div class="w-full sm:w-32 h-48 sm:h-32 flex-shrink-0 rounded-lg overflow-hidden bg-gradient-to-br from-indigo-100 to-purple-100">
                         {% if resource.images %}
-                            <img src="{{ resource.images.split(',')[0] if ',' in resource.images else resource.images }}" 
+                            {% set first_image = get_image_url(resource.images) %}
+                            {% if first_image %}
+                            <img src="{{ first_image }}" 
                                  alt="{{ resource.title }}" 
-                                 class="w-full h-full object-cover">
+                                 class="w-full h-full object-cover"
+                                 loading="lazy"
+                                 onerror="console.error('Image failed to load:', this.src); this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                            {% else %}
+                            <div class="w-full h-full flex items-center justify-center">
+                                <i class="fas fa-image text-3xl text-indigo-300"></i>
+                            </div>
+                            {% endif %}
                         {% else %}
                             <div class="w-full h-full flex items-center justify-center">
                                 <i class="fas fa-image text-3xl text-indigo-300"></i>

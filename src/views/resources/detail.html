@@ -33,9 +33,18 @@
             {% endif %}
 
             {% if resource.images %}
-            <img src="{{ resource.images.split(',')[0] if ',' in resource.images else resource.images }}" 
+            {% set first_image = get_image_url(resource.images) %}
+            {% if first_image %}
+            <img src="{{ first_image }}" 
                  alt="{{ resource.title }}" 
-                 class="w-full h-auto rounded-lg mb-6 shadow-md">
+                 class="w-full h-auto rounded-lg mb-6 shadow-md"
+                 loading="lazy"
+                 onerror="console.error('Image failed to load:', this.src); this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'300\'%3E%3Crect fill=\'%23ddd\' width=\'400\' height=\'300\'/%3E%3Ctext fill=\'%23999\' font-family=\'sans-serif\' font-size=\'18\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3EImage not found%3C/text%3E%3C/svg%3E';">
+            {% else %}
+            <div class="w-full h-64 bg-gray-200 rounded-lg mb-6 flex items-center justify-center">
+                <span class="text-gray-400">No image available</span>
+            </div>
+            {% endif %}
             {% else %}
             <div class="w-full h-64 bg-gray-200 rounded-lg mb-6 flex items-center justify-center">
                 <span class="text-gray-400">No image available</span>
