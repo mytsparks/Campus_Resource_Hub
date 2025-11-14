@@ -85,6 +85,12 @@
                        class="text-white hover:text-indigo-200 font-medium transition">
                         Bookings
                     </a>
+                    {% if current_user.is_authenticated and current_user.role == 'admin' %}
+                    <a href="{{ url_for('admin.admin_dashboard') }}" 
+                       class="text-white hover:text-indigo-200 font-medium transition">
+                        Dashboard
+                    </a>
+                    {% endif %}
                     <!-- Notifications Bell with Dropdown -->
                     <div class="relative">
                         <button onclick="toggleNotificationDropdown()" class="text-white hover:text-indigo-200 transition relative focus:outline-none">
@@ -117,9 +123,9 @@
                                             <div class="flex-grow min-w-0">
                                                 <p class="text-sm font-medium text-gray-900">{{ notification.title }}</p>
                                                 <p class="text-xs text-gray-600 truncate">{{ notification.message }}</p>
-                                                {% if notification.timestamp %}
+                                                {% if notification.timestamp_formatted %}
                                                 <p class="text-xs text-gray-400 mt-1">
-                                                    {{ notification.timestamp.strftime('%b %d, %Y %I:%M %p') if hasattr(notification.timestamp, 'strftime') else notification.timestamp }}
+                                                    {{ notification.timestamp_formatted }}
                                                 </p>
                                                 {% endif %}
                                             </div>

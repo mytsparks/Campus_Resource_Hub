@@ -113,11 +113,20 @@ def list_resources():
             )
         
         # Convert Resource objects to dictionaries for template (to avoid detached instance errors)
+        # Also fetch owner information
+        from src.data_access.user_dal import UserDAL
+        user_dal = UserDAL(session)
+        
         resources_dicts = []
         for resource in resources:
+            owner = None
+            if resource.owner_id:
+                owner = user_dal.get_user_by_id(resource.owner_id)
+            
             resources_dicts.append({
                 'resource_id': resource.resource_id,
                 'owner_id': resource.owner_id,
+                'owner_name': owner.name if owner else 'Unknown',
                 'title': resource.title,
                 'description': resource.description,
                 'category': resource.category,
@@ -150,19 +159,26 @@ def list_resources():
                     created_at=r_dict['created_at'],
                 ))
             resources = search_by_similarity(search_term, resource_objs, top_k=50)
-            # Convert back to dicts
-            resources = [{
-                'resource_id': r.resource_id,
-                'owner_id': r.owner_id,
-                'title': r.title,
-                'description': r.description,
-                'category': r.category,
-                'location': r.location,
-                'capacity': r.capacity,
-                'images': r.images,
-                'status': r.status,
-                'created_at': r.created_at
-            } for r in resources]
+            # Convert back to dicts with owner info
+            resources_with_owners = []
+            for r in resources:
+                owner = None
+                if r.owner_id:
+                    owner = user_dal.get_user_by_id(r.owner_id)
+                resources_with_owners.append({
+                    'resource_id': r.resource_id,
+                    'owner_id': r.owner_id,
+                    'owner_name': owner.name if owner else 'Unknown',
+                    'title': r.title,
+                    'description': r.description,
+                    'category': r.category,
+                    'location': r.location,
+                    'capacity': r.capacity,
+                    'images': r.images,
+                    'status': r.status,
+                    'created_at': r.created_at
+                })
+            resources = resources_with_owners
         
         # Apply sorting
         if sort_by == 'name':
@@ -218,9 +234,18 @@ def resource_detail(resource_id: int):
 
         # Access all needed attributes while still in session context
         # This prevents DetachedInstanceError when the session closes
+        # Get owner information
+        from src.data_access.user_dal import UserDAL
+        user_dal = UserDAL(session)
+        owner = None
+        if resource.owner_id:
+            owner = user_dal.get_user_by_id(resource.owner_id)
+        
         resource_dict = {
             'resource_id': resource.resource_id,
             'owner_id': resource.owner_id,
+            'owner_name': owner.name if owner else 'Unknown',
+            'owner_email': owner.email if owner else None,
             'title': resource.title,
             'description': resource.description,
             'category': resource.category,

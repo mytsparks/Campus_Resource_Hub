@@ -94,3 +94,46 @@ def api_insights():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@summary_bp.route('/api/summary')
+@login_required
+def api_summary():
+    """API endpoint to get full summary data as JSON for dashboard."""
+    if current_user.role not in ('admin', 'staff'):
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    try:
+        from src.ai.summary_generator import SummaryGenerator
+        
+        db_path = Path(__file__).parent.parent.parent / "instance" / "site.db"
+        
+        from config import Config
+        llm_config = {
+            'llm_provider': Config.LLM_PROVIDER,
+            'llm_model': Config.LLM_MODEL,
+            'api_key': Config.LLM_API_KEY,
+            'base_url': Config.OLLAMA_BASE_URL
+        }
+        
+        generator = SummaryGenerator(db_path, llm_config)
+        summary = generator.generate_summary()
+        insights = generator.generate_insights()
+        summary_markdown = ""
+        if summary.get('ai_summary'):
+            raw_html = markdown(summary['ai_summary'], extensions=['extra', 'sane_lists'])
+            allowed_tags = bleach.sanitizer.ALLOWED_TAGS.union({'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'hr', 'code', 'pre', 'strong', 'em', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'blockquote'})
+            allowed_attrs = dict(bleach.sanitizer.ALLOWED_ATTRIBUTES)
+            allowed_attrs.update({'a': ['href', 'title', 'target', 'rel']})
+            cleaned_html = bleach.clean(raw_html, tags=allowed_tags, attributes=allowed_attrs, strip=True)
+            summary_markdown = bleach.linkify(cleaned_html)
+        
+        return jsonify({
+            'summary': summary,
+            'summary_html': summary_markdown,
+            'insights': insights
+        })
+    
+    except Exception as e:
+        import traceback
+        print(traceback.format_exc())
+        return jsonify({'error': str(e)}), 500

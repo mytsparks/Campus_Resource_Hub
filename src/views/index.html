@@ -153,6 +153,20 @@
                         <p class="text-sm text-gray-600 mb-3 line-clamp-1">
                             {{ resource.description or 'Modern resource with all necessary amenities' }}
                         </p>
+                        <!-- Owner Info -->
+                        {% if resource.owner_name %}
+                        <div class="flex items-center gap-2 mb-2">
+                            <span class="text-sm text-gray-600">Posted by</span>
+                            <span class="text-sm font-semibold text-gray-800">{{ resource.owner_name }}</span>
+                            {% if current_user.is_authenticated and current_user.user_id != resource.owner_id %}
+                            <a href="{{ url_for('messages.message_user', user_id=resource.owner_id) }}" 
+                               class="text-indigo-600 hover:text-indigo-800 transition" 
+                               title="Message {{ resource.owner_name }}">
+                                <i class="fas fa-envelope"></i>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
                         <div class="flex flex-wrap items-center gap-4 text-sm text-gray-700">
                             {% if resource.capacity %}
                             <span class="flex items-center">

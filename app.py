@@ -111,11 +111,11 @@ def create_app(config_class: type[Config] = Config) -> Flask:
                     week_ago = (datetime.now() - timedelta(days=7)).isoformat()
                     messages_result = session.execute(
                         text("""
-                            SELECT m.*, u.name as sender_name, r.title as resource_title
+                            SELECT m.message_id, m.thread_id, m.sender_id, m.receiver_id, 
+                                   m.content, m.timestamp, 
+                                   u.name as sender_name
                             FROM messages m
                             LEFT JOIN users u ON m.sender_id = u.user_id
-                            LEFT JOIN bookings b ON m.thread_id = b.booking_id
-                            LEFT JOIN resources r ON b.resource_id = r.resource_id
                             WHERE m.receiver_id = :user_id AND m.timestamp >= :week_ago
                             ORDER BY m.timestamp DESC
                             LIMIT 10
@@ -156,32 +156,41 @@ def create_app(config_class: type[Config] = Config) -> Flask:
                     
                     # Process messages
                     for row in messages_result:
+                        # Get message preview (first 50 chars)
+                        message_preview = row.content[:50] + '...' if row.content and len(row.content) > 50 else (row.content or 'New message')
+                        # Format timestamp
+                        timestamp_formatted = row.timestamp.strftime('%b %d, %Y %I:%M %p') if row.timestamp and isinstance(row.timestamp, datetime) else (str(row.timestamp) if row.timestamp else 'N/A')
                         notifications.append({
                             'type': 'message',
                             'title': f'New message from {row.sender_name or "User"}',
-                            'message': f'Regarding: {row.resource_title or "Resource"}',
+                            'message': message_preview,
                             'timestamp': row.timestamp,
+                            'timestamp_formatted': timestamp_formatted,
                             'link': url_for('messages.view_thread', thread_id=row.thread_id) if row.thread_id else url_for('messages.inbox')
                         })
                     
                     # Process pending bookings (for owners)
                     for row in pending_bookings_result:
+                        timestamp_formatted = row.created_at.strftime('%b %d, %Y %I:%M %p') if row.created_at and isinstance(row.created_at, datetime) else (str(row.created_at) if row.created_at else 'N/A')
                         notifications.append({
                             'type': 'booking_request',
                             'title': f'Booking request from {row.requester_name}',
                             'message': f'{row.resource_title} - Pending approval',
                             'timestamp': row.created_at,
+                            'timestamp_formatted': timestamp_formatted,
                             'link': url_for('bookings.my_bookings')
                         })
                     
                     # Process booking updates
                     for row in booking_updates_result:
                         status_text = 'approved' if row.status == 'approved' else 'rejected'
+                        timestamp_formatted = row.updated_at.strftime('%b %d, %Y %I:%M %p') if row.updated_at and isinstance(row.updated_at, datetime) else (str(row.updated_at) if row.updated_at else 'N/A')
                         notifications.append({
                             'type': 'booking_update',
                             'title': f'Booking {status_text}',
                             'message': f'{row.resource_title} - Your booking was {status_text}',
                             'timestamp': row.updated_at,
+                            'timestamp_formatted': timestamp_formatted,
                             'link': url_for('bookings.my_bookings')
                         })
                     
