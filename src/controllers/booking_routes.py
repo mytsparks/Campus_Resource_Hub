@@ -169,26 +169,43 @@ def create_booking(resource_id: int):
                 # Conflict detected - prompt user to message owner and notify admin
                 flash('This time slot is already booked. Please send a message to the resource owner to discuss availability.', 'warning')
                 
-                # Notify admin of conflict
-                from src.data_access.user_dal import UserDAL
-                user_dal = UserDAL(session)
-                admins = user_dal.get_users_by_role('admin')
-                
-                from src.data_access.message_dal import MessageDAL
-                message_dal = MessageDAL(session)
-                conflict_message = f"Booking conflict detected: User {current_user.name} ({current_user.email}) attempted to book {resource_obj.title} from {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}, but this time slot is already reserved."
-                
-                for admin in admins:
-                    message_dal.create_message(
-                        sender_id=current_user.user_id,
-                        receiver_id=admin.user_id,
-                        content=conflict_message,
-                        thread_id=None,
-                    )
+                # Notify admin of conflict (with error handling)
+                try:
+                    from src.data_access.user_dal import UserDAL
+                    user_dal = UserDAL(session)
+                    admins = user_dal.get_users_by_role('admin')
+                    
+                    if admins:
+                        from src.data_access.message_dal import MessageDAL
+                        message_dal = MessageDAL(session)
+                        # Safely get user and resource info
+                        user_name = getattr(current_user, 'name', 'Unknown User')
+                        user_email = getattr(current_user, 'email', 'unknown@email.com')
+                        resource_title = getattr(resource_obj, 'title', 'Unknown Resource')
+                        
+                        conflict_message = f"Booking conflict detected: User {user_name} ({user_email}) attempted to book {resource_title} from {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}, but this time slot is already reserved."
+                        
+                        for admin in admins:
+                            try:
+                                message_dal.create_message(
+                                    sender_id=current_user.user_id,
+                                    receiver_id=admin.user_id,
+                                    content=conflict_message,
+                                    thread_id=None,
+                                )
+                            except Exception as e:
+                                # Log error but don't fail the whole operation
+                                import sys
+                                print(f"Error sending conflict notification to admin {admin.user_id}: {e}", file=sys.stderr)
+                except Exception as e:
+                    # Log error but don't fail the whole operation
+                    import sys
+                    print(f"Error in conflict notification: {e}", file=sys.stderr)
                 
                 # Redirect to message page with pre-filled form
+                resource_title = getattr(resource_obj, 'title', 'this resource')
                 return redirect(url_for('messages.message_user', user_id=resource_obj.owner_id, 
-                                     prefill_message=f"I would like to book {resource_obj.title} from {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}, but this time appears to be unavailable. Could we discuss alternative times?"))
+                                     prefill_message=f"I would like to book {resource_title} from {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}, but this time appears to be unavailable. Could we discuss alternative times?"))
 
         # Get existing bookings for calendar display
         booking_dal = BookingDAL(session)

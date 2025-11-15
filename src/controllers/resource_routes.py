@@ -21,10 +21,11 @@ def allowed_file(filename):
 
 @resource_bp.route('/')
 def list_resources():
-    search_term = request.args.get('q')
-    category = request.args.get('category')
-    location = request.args.get('location')
-    capacity = request.args.get('capacity', type=int)
+    search_term = request.args.get('q', '').strip() or None
+    category = request.args.get('category', '').strip() or None
+    location = request.args.get('location', '').strip() or None
+    capacity_str = request.args.get('capacity', '').strip()
+    capacity = int(capacity_str) if capacity_str and capacity_str.isdigit() else None
     sort_by = request.args.get('sort', 'name')  # name, recent, most_booked, top_rated
     use_advanced = request.args.get('advanced', 'false') == 'true'  # Enable advanced search
     show_all = request.args.get('show_all', 'false') == 'true'  # Show all resources (for owners/admins)
@@ -52,10 +53,10 @@ def list_resources():
                 params['category'] = category
             
             if location:
-                query += " AND location = :location"
-                params['location'] = location
+                query += " AND location LIKE :location"
+                params['location'] = f"%{location}%"
             
-            if capacity is not None:
+            if capacity is not None and capacity > 0:
                 query += " AND capacity >= :capacity"
                 params['capacity'] = capacity
             
@@ -218,6 +219,19 @@ def list_resources():
     )
 
 
+@resource_bp.route('/api/categories')
+def get_categories():
+    """API endpoint to get all unique categories from published resources."""
+    from flask import jsonify
+    with get_db_session() as session:
+        from sqlalchemy import text
+        result = session.execute(
+            text("SELECT DISTINCT category FROM resources WHERE category IS NOT NULL AND category != '' AND status = 'published' ORDER BY category")
+        )
+        categories = [row[0] for row in result if row[0]]
+        return jsonify({'categories': categories})
+
+
 @resource_bp.route('/<int:resource_id>/json')
 def resource_detail_json(resource_id: int):
     """API endpoint to get resource details as JSON for modal popup."""
@@ -377,6 +391,21 @@ def create_resource():
         return redirect(url_for('resources.list_resources'))
     
     form = ResourceForm()
+    
+    # Populate category choices dynamically from database
+    with get_db_session() as session:
+        from sqlalchemy import text
+        result = session.execute(
+            text("SELECT DISTINCT category FROM resources WHERE category IS NOT NULL AND category != '' ORDER BY category")
+        )
+        existing_categories = [row[0] for row in result if row[0]]
+        # Build choices: empty option + existing categories
+        category_choices = [('', 'Select a category...')]
+        category_choices.extend([(cat, cat) for cat in existing_categories])
+        # Add "Other" option if not already present
+        if 'Other' not in existing_categories:
+            category_choices.append(('Other', 'Other'))
+        form.category.choices = category_choices
 
     if form.validate_on_submit():
         # Handle file uploads
@@ -491,6 +520,23 @@ def edit_resource(resource_id: int):
         
         form_obj = ResourceFormObj(resource_dict)
         form = ResourceForm(obj=form_obj)
+        
+        # Populate category choices dynamically from database
+        from sqlalchemy import text
+        result = session.execute(
+            text("SELECT DISTINCT category FROM resources WHERE category IS NOT NULL AND category != '' ORDER BY category")
+        )
+        existing_categories = [row[0] for row in result if row[0]]
+        # Build choices: empty option + existing categories
+        category_choices = [('', 'Select a category...')]
+        category_choices.extend([(cat, cat) for cat in existing_categories])
+        # Add current category if not in list
+        if resource.category and resource.category not in existing_categories:
+            category_choices.append((resource.category, resource.category))
+        # Add "Other" option if not already present
+        if 'Other' not in existing_categories and resource.category != 'Other':
+            category_choices.append(('Other', 'Other'))
+        form.category.choices = category_choices
         
         # Get existing equipment
         from sqlalchemy import text

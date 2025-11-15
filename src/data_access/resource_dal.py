@@ -94,8 +94,8 @@ class ResourceDAL:
             params['category'] = category
         
         if location:
-            query += " AND location = :location"
-            params['location'] = location
+            query += " AND location LIKE :location"
+            params['location'] = f"%{location}%"
         
         if capacity is not None:
             query += " AND capacity >= :capacity"
