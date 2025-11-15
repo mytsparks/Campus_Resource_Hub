@@ -78,3 +78,54 @@ class ReviewDAL:
             }
         return {'total_reviews': 0, 'avg_rating': 0.0, 'min_rating': 0, 'max_rating': 0}
 
+    def get_review_by_id(self, review_id: int) -> Review | None:
+        """Get a review by its ID."""
+        result = self.db_session.execute(
+            text("SELECT * FROM reviews WHERE review_id = :review_id"),
+            {"review_id": review_id}
+        )
+        row = result.fetchone()
+        if row:
+            return Review(
+                review_id=row[0],
+                resource_id=row[1],
+                reviewer_id=row[2],
+                rating=row[3],
+                comment=row[4],
+                timestamp=row[5],
+            )
+        return None
+
+    def update_review(self, review_id: int, rating: int | None = None, comment: str | None = None) -> Review | None:
+        """Update a review (admin can edit any review)."""
+        review = self.get_review_by_id(review_id)
+        if not review:
+            return None
+        
+        if rating is not None:
+            review.rating = rating
+        if comment is not None:
+            review.comment = comment
+        
+        try:
+            self.db_session.commit()
+            self.db_session.refresh(review)
+            return review
+        except SQLAlchemyError:
+            self.db_session.rollback()
+            return None
+
+    def delete_review(self, review_id: int) -> bool:
+        """Delete a review (admin can delete any review)."""
+        review = self.get_review_by_id(review_id)
+        if not review:
+            return False
+        
+        try:
+            self.db_session.delete(review)
+            self.db_session.commit()
+            return True
+        except SQLAlchemyError:
+            self.db_session.rollback()
+            return False
+

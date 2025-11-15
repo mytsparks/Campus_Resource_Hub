@@ -157,6 +157,14 @@ def list_resources():
                 })
             resources = resources_with_owners
         
+        # Add aggregate ratings to all resources
+        from src.data_access.review_dal import ReviewDAL
+        review_dal = ReviewDAL(session)
+        for resource_dict in resources:
+            stats = review_dal.get_resource_rating_stats(resource_dict['resource_id'])
+            resource_dict['avg_rating'] = stats['avg_rating']
+            resource_dict['total_reviews'] = stats['total_reviews']
+        
         # Apply sorting
         if sort_by == 'name':
             resources = sorted(resources, key=lambda r: r.get('title', '').lower())
@@ -175,18 +183,28 @@ def list_resources():
             resources = sorted(resources_with_counts, key=lambda r: r.get('booking_count', 0), reverse=True)
         elif sort_by == 'top_rated':
             # Sort by average rating
-            from src.data_access.review_dal import ReviewDAL
-            review_dal = ReviewDAL(session)
-            resources_with_ratings = []
-            for resource_dict in resources:
-                stats = review_dal.get_resource_rating_stats(resource_dict['resource_id'])
-                resource_dict['avg_rating'] = stats['avg_rating']
-                resources_with_ratings.append(resource_dict)
-            resources = sorted(resources_with_ratings, key=lambda r: r.get('avg_rating', 0), reverse=True)
+            resources = sorted(resources, key=lambda r: r.get('avg_rating', 0), reverse=True)
         elif sort_by == 'recent':
             # Sort by created_at DESC (most recent first)
             resources = sorted(resources, key=lambda r: r.get('created_at') or '', reverse=True)
         # Default is already handled
+        
+        # Find top-rated resource for badge (highest avg_rating with at least 1 review)
+        top_rated_resource_id = None
+        top_rated_avg = 0
+        for resource_dict in resources:
+            if resource_dict.get('total_reviews', 0) > 0:
+                avg_rating = resource_dict.get('avg_rating', 0)
+                if avg_rating > top_rated_avg:
+                    top_rated_avg = avg_rating
+                    top_rated_resource_id = resource_dict['resource_id']
+        
+        # Mark top-rated resource
+        for resource_dict in resources:
+            if resource_dict['resource_id'] == top_rated_resource_id:
+                resource_dict['is_top_rated'] = True
+            else:
+                resource_dict['is_top_rated'] = False
 
     return render_template(
         'index.html',
@@ -198,6 +216,83 @@ def list_resources():
         sort_by=sort_by,
         show_all=show_all,
     )
+
+
+@resource_bp.route('/<int:resource_id>/json')
+def resource_detail_json(resource_id: int):
+    """API endpoint to get resource details as JSON for modal popup."""
+    from flask import jsonify
+    with get_db_session() as session:
+        dal = ResourceDAL(session)
+        resource = dal.get_resource_by_id(resource_id)
+
+        if resource is None:
+            return jsonify({'error': 'Resource not found'}), 404
+
+        # Get owner information
+        from src.data_access.user_dal import UserDAL
+        user_dal = UserDAL(session)
+        owner = None
+        if resource.owner_id:
+            owner = user_dal.get_user_by_id(resource.owner_id)
+        
+        # Get reviews and rating stats
+        from src.data_access.review_dal import ReviewDAL
+        review_dal = ReviewDAL(session)
+        reviews = review_dal.get_reviews_for_resource(resource_id)
+        rating_stats = review_dal.get_resource_rating_stats(resource_id)
+        
+        # Get equipment
+        from sqlalchemy import text
+        equipment_result = session.execute(
+            text("SELECT name FROM equipment WHERE resource_id = :resource_id"),
+            {"resource_id": resource_id}
+        )
+        equipment = [row[0] for row in equipment_result]
+        
+        # Get existing bookings
+        from src.data_access.booking_dal import BookingDAL
+        booking_dal = BookingDAL(session)
+        existing_bookings = booking_dal.get_bookings_for_resource(resource_id)
+        bookings_data = []
+        for booking in existing_bookings:
+            if booking.start_datetime and booking.end_datetime:
+                bookings_data.append({
+                    'start': booking.start_datetime.isoformat() if hasattr(booking.start_datetime, 'isoformat') else str(booking.start_datetime),
+                    'end': booking.end_datetime.isoformat() if hasattr(booking.end_datetime, 'isoformat') else str(booking.end_datetime),
+                    'status': booking.status
+                })
+        
+        # Parse images
+        images_list = []
+        if resource.images:
+            images_list = [img.strip() for img in resource.images.split(',') if img.strip()]
+        
+        return jsonify({
+            'resource_id': resource.resource_id,
+            'owner_id': resource.owner_id,
+            'owner_name': owner.name if owner else 'Unknown',
+            'title': resource.title,
+            'description': resource.description or 'No description provided.',
+            'category': resource.category,
+            'location': resource.location,
+            'capacity': resource.capacity,
+            'images': images_list,
+            'equipment': equipment,
+            'rating_stats': rating_stats,
+            'reviews': [
+                {
+                    'reviewer_id': review.reviewer_id,
+                    'rating': review.rating,
+                    'comment': review.comment or 'No comment provided.',
+                    'timestamp': review.timestamp.isoformat() if review.timestamp and hasattr(review.timestamp, 'isoformat') else str(review.timestamp) if review.timestamp else None
+                }
+                for review in reviews[:5]  # Limit to 5 most recent
+            ],
+            'bookings': bookings_data,
+            'booking_type': getattr(resource, 'booking_type', 'open'),
+            'status': resource.status
+        })
 
 
 @resource_bp.route('/<int:resource_id>')
@@ -276,6 +371,11 @@ def resource_detail(resource_id: int):
 @resource_bp.route('/create', methods=['GET', 'POST'])
 @login_required
 def create_resource():
+    # Restrict resource creation to staff and admin only
+    if current_user.role == 'student':
+        flash('Only staff and administrators can create resources. Students can view, book, and review resources.', 'error')
+        return redirect(url_for('resources.list_resources'))
+    
     form = ResourceForm()
 
     if form.validate_on_submit():
@@ -312,6 +412,7 @@ def create_resource():
             'images': image_paths,
             'availability_rules': availability_rules or form.availability_rules.data,
             'status': form.status.data,
+            'booking_type': form.booking_type.data,
         }
 
         try:
@@ -379,6 +480,7 @@ def edit_resource(resource_id: int):
             'capacity': resource.capacity,
             'images': resource.images,
             'status': resource.status,
+            'booking_type': getattr(resource, 'booking_type', 'open'),
         }
         
         # Create a simple object for form population
@@ -470,6 +572,7 @@ def edit_resource(resource_id: int):
                 'images': image_paths,
                 'availability_rules': availability_rules or form.availability_rules.data,
                 'status': form.status.data,
+                'booking_type': form.booking_type.data,
             }
             
             updated_resource = dal.update_resource(resource_id, data)

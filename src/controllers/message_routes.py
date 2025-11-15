@@ -135,8 +135,14 @@ def message_user(user_id: int):
         except Exception:
             pass
     
+    # Support pre-filled message from query parameter (e.g., from booking conflict)
+    prefill_message = request.args.get('prefill_message', '')
+    if prefill_message and not form.content.data:
+        form.content.data = prefill_message
+    
     return render_template('messages/message_user.html', 
                          form=form, 
                          recipient=recipient,
-                         existing_thread=existing_thread)
+                         existing_thread=existing_thread,
+                         prefill_message=prefill_message)
 

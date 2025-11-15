@@ -25,6 +25,7 @@ class ResourceDAL:
             images=data.get('images'),
             availability_rules=data.get('availability_rules'),
             status=data.get('status', 'draft'),
+            booking_type=data.get('booking_type', 'open'),
         )
 
         self.db_session.add(resource)
@@ -35,7 +36,43 @@ class ResourceDAL:
 
     def get_resource_by_id(self, resource_id: int) -> Resource | None:
         # Use session.get() for proper ORM binding instead of raw SQL
-        return self.db_session.get(Resource, resource_id)
+        try:
+            return self.db_session.get(Resource, resource_id)
+        except Exception as e:
+            # If booking_type column doesn't exist, use raw SQL query
+            # This handles the case where migration hasn't been run yet
+            if 'booking_type' in str(e) or 'no such column' in str(e).lower():
+                from sqlalchemy import text
+                result = self.db_session.execute(
+                    text("""
+                        SELECT resource_id, owner_id, title, description, category, 
+                               location, capacity, images, availability_rules, status, created_at
+                        FROM resources
+                        WHERE resource_id = :resource_id
+                    """),
+                    {"resource_id": resource_id}
+                )
+                row = result.fetchone()
+                if row:
+                    # Create Resource object without booking_type
+                    resource = Resource(
+                        resource_id=row[0],
+                        owner_id=row[1],
+                        title=row[2],
+                        description=row[3],
+                        category=row[4],
+                        location=row[5],
+                        capacity=row[6],
+                        images=row[7],
+                        availability_rules=row[8],
+                        status=row[9],
+                        created_at=row[10] if len(row) > 10 else None,
+                    )
+                    # Set booking_type attribute manually (won't be in DB but code can use getattr)
+                    resource.booking_type = 'open'  # Default value
+                    return resource
+                return None
+            raise
 
     def get_published_resources(
         self,

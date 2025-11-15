@@ -92,6 +92,7 @@ class Resource(Base):
     images = Column(Text)
     availability_rules = Column(Text)
     status = Column(String, default='draft')
+    booking_type = Column(String, default='open')  # 'open' or 'restricted'
     created_at = Column(DateTime, default=datetime.utcnow)
 
     owner: 'User' = relationship('User', back_populates='resources_owned')

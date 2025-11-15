@@ -158,7 +158,21 @@
                     
                     <!-- Details in Middle -->
                     <div class="flex-grow min-w-0 w-full sm:w-auto">
-                        <h3 class="text-base sm:text-lg font-bold text-gray-900 mb-1">{{ resource.title }}</h3>
+                        <div class="flex items-center gap-2 mb-1">
+                            <h3 class="text-base sm:text-lg font-bold text-gray-900">{{ resource.title }}</h3>
+                            {% if resource.is_top_rated %}
+                            <span class="inline-flex items-center px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs font-semibold">
+                                <i class="fas fa-star mr-1"></i>Top Rated
+                            </span>
+                            {% endif %}
+                        </div>
+                        {% if resource.avg_rating and resource.total_reviews > 0 %}
+                        <div class="flex items-center gap-1 mb-2">
+                            <span class="text-yellow-500 text-sm">⭐</span>
+                            <span class="text-sm font-semibold text-gray-700">{{ resource.avg_rating }}</span>
+                            <span class="text-xs text-gray-500">({{ resource.total_reviews }} review{{ 's' if resource.total_reviews != 1 else '' }})</span>
+                        </div>
+                        {% endif %}
                         <p class="text-xs sm:text-sm text-gray-600 mb-2 sm:mb-3 line-clamp-2 sm:line-clamp-1">
                             {{ resource.description or 'Modern resource with all necessary amenities' }}
                         </p>
@@ -195,8 +209,12 @@
                         </div>
                     </div>
                     
-                    <!-- Book Button on Right -->
-                    <div class="flex-shrink-0 w-full sm:w-auto">
+                    <!-- Action Buttons on Right -->
+                    <div class="flex-shrink-0 w-full sm:w-auto flex flex-col sm:flex-row gap-2">
+                        <button onclick="openResourceModal({{ resource.resource_id }})" 
+                                class="w-full sm:w-auto bg-gray-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-gray-700 font-semibold text-center whitespace-nowrap transition shadow-md text-sm sm:text-base">
+                            View Details
+                        </button>
                         <a href="{{ url_for('resources.resource_detail', resource_id=resource.resource_id) }}" 
                            class="block w-full sm:w-auto bg-indigo-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-indigo-700 font-semibold text-center whitespace-nowrap transition shadow-md text-sm sm:text-base">
                             Book Resource
@@ -209,12 +227,12 @@
                     <i class="fas fa-search text-6xl text-gray-300 mb-4"></i>
                     <h3 class="text-2xl font-bold text-gray-700 mb-2">No resources found</h3>
                     <p class="text-gray-500 mb-6">Try adjusting your search filters or browse all available resources.</p>
-                    {% if current_user.is_authenticated %}
+                    {% if current_user.is_authenticated and current_user.role in ['staff', 'admin'] %}
                     <a href="{{ url_for('resources.create_resource') }}" 
                        class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-lg">
                         <i class="fas fa-plus mr-2"></i>Create the First Resource
                     </a>
-                    {% else %}
+                    {% elif not current_user.is_authenticated %}
                     <a href="{{ url_for('auth.register') }}" 
                        class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-semibold shadow-lg">
                         <i class="fas fa-user-plus mr-2"></i>Sign Up to Add Resources
@@ -240,7 +258,146 @@ function decrementCapacity() {
         input.value = current - 1;
     }
 }
+
+// Resource Detail Modal Functions
+function openResourceModal(resourceId) {
+    const modal = document.getElementById('resourceModal');
+    const modalContent = document.getElementById('modalContent');
+    modalContent.innerHTML = '<div class="text-center py-12"><i class="fas fa-spinner fa-spin text-4xl text-indigo-600"></i><p class="mt-4 text-gray-600">Loading resource details...</p></div>';
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    
+    fetch(`/resources/${resourceId}/json`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                modalContent.innerHTML = `<div class="text-center py-12"><p class="text-red-600">${data.error}</p></div>`;
+                return;
+            }
+            
+            let imagesHtml = '';
+            if (data.images && data.images.length > 0) {
+                imagesHtml = `<div class="mb-4">
+                    <img src="${data.images[0]}" alt="${data.title}" class="w-full h-64 object-cover rounded-lg shadow-md" 
+                         onerror="this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'300\'%3E%3Crect fill=\'%23ddd\' width=\'400\' height=\'300\'/%3E%3Ctext fill=\'%23999\' font-family=\'sans-serif\' font-size=\'18\' x=\'50%25\' y=\'50%25\' text-anchor=\'middle\' dy=\'.3em\'%3EImage not found%3C/text%3E%3C/svg%3E';">
+                </div>`;
+            } else {
+                imagesHtml = `<div class="w-full h-64 bg-gray-200 rounded-lg mb-4 flex items-center justify-center">
+                    <span class="text-gray-400">No image available</span>
+                </div>`;
+            }
+            
+            let equipmentHtml = '';
+            if (data.equipment && data.equipment.length > 0) {
+                equipmentHtml = `<div class="mb-4">
+                    <h3 class="font-semibold text-gray-800 mb-2">Equipment:</h3>
+                    <div class="flex flex-wrap gap-2">
+                        ${data.equipment.map(item => `<span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm">${escapeHtml(item)}</span>`).join('')}
+                    </div>
+                </div>`;
+            }
+            
+            let reviewsHtml = '';
+            if (data.reviews && data.reviews.length > 0) {
+                reviewsHtml = `<div class="mb-4">
+                    <h3 class="font-semibold text-gray-800 mb-2">Reviews (${data.rating_stats.total_reviews}):</h3>
+                    <div class="mb-2">
+                        <span class="text-2xl font-bold">${data.rating_stats.avg_rating}</span>
+                        <span class="text-yellow-500 text-lg">⭐</span>
+                    </div>
+                    <div class="space-y-2 max-h-48 overflow-y-auto">
+                        ${data.reviews.map(review => `
+                            <div class="bg-gray-50 p-3 rounded-lg">
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-sm font-semibold text-gray-700">User ${review.reviewer_id}</span>
+                                    <span class="text-yellow-500">${'⭐'.repeat(review.rating)}</span>
+                                </div>
+                                <p class="text-sm text-gray-600">${escapeHtml(review.comment)}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            } else {
+                reviewsHtml = '<p class="text-gray-500 text-sm mb-4">No reviews yet.</p>';
+            }
+            
+            modalContent.innerHTML = `
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900 mb-4">${escapeHtml(data.title)}</h2>
+                    <div class="flex flex-wrap items-center gap-2 mb-4">
+                        <span class="text-indigo-600 font-semibold">${escapeHtml(data.location || 'Location not specified')}</span>
+                        ${data.capacity ? `<span class="text-gray-500">| Capacity: ${data.capacity}</span>` : ''}
+                        ${data.category ? `<span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm">${escapeHtml(data.category)}</span>` : ''}
+                        ${data.booking_type === 'restricted' ? '<span class="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm">Requires Approval</span>' : ''}
+                    </div>
+                    ${imagesHtml}
+                    <div class="mb-4">
+                        <h3 class="font-semibold text-gray-800 mb-2">Description:</h3>
+                        <p class="text-gray-600 text-sm">${escapeHtml(data.description)}</p>
+                    </div>
+                    ${equipmentHtml}
+                    ${reviewsHtml}
+                    <div class="flex gap-3 mt-6 pt-4 border-t">
+                        <a href="/resources/${data.resource_id}" 
+                           class="flex-1 bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 font-semibold text-center transition">
+                            View Full Page
+                        </a>
+                        <a href="/bookings/create/${data.resource_id}" 
+                           class="flex-1 bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-semibold text-center transition">
+                            Book Resource
+                        </a>
+                    </div>
+                </div>
+            `;
+        })
+        .catch(error => {
+            console.error('Error fetching resource details:', error);
+            modalContent.innerHTML = '<div class="text-center py-12"><p class="text-red-600">Error loading resource details. Please try again.</p></div>';
+        });
+}
+
+function closeResourceModal() {
+    document.getElementById('resourceModal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Close modal when clicking outside or pressing Escape
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('resourceModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeResourceModal();
+            }
+        });
+        
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                closeResourceModal();
+            }
+        });
+    }
+});
 </script>
+
+<!-- Resource Detail Modal -->
+<div id="resourceModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+        <div class="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
+            <h2 class="text-xl font-bold text-gray-900">Resource Details</h2>
+            <button onclick="closeResourceModal()" class="text-gray-500 hover:text-gray-700 text-2xl font-bold leading-none">&times;</button>
+        </div>
+        <div id="modalContent" class="flex-1 overflow-y-auto p-6">
+            <!-- Content will be loaded here -->
+        </div>
+    </div>
+</div>
 
 {% endblock %}
 

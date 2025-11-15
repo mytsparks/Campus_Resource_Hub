@@ -93,6 +93,10 @@
                         Resources
                     </a>
                     {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('user.user_dashboard') }}" 
+                       class="text-white hover:text-indigo-200 font-medium transition">
+                        My Dashboard
+                    </a>
                     <a href="{{ url_for('bookings.my_bookings') }}" 
                        class="text-white hover:text-indigo-200 font-medium transition">
                         Bookings
@@ -179,15 +183,20 @@
                                     {{ current_user.role|title }}
                                 </span>
                             </div>
+                            <a href="{{ url_for('user.user_dashboard') }}" class="dropdown-item">
+                                <i class="fas fa-tachometer-alt mr-2"></i> My Dashboard
+                            </a>
                             <a href="{{ url_for('bookings.my_bookings') }}" class="dropdown-item">
                                 <i class="fas fa-calendar-alt mr-2"></i> My Bookings
                             </a>
                             <a href="{{ url_for('messages.inbox') }}" class="dropdown-item">
                                 <i class="fas fa-inbox mr-2"></i> Messages
                             </a>
+                            {% if current_user.role in ['staff', 'admin'] %}
                             <a href="{{ url_for('resources.create_resource') }}" class="dropdown-item">
                                 <i class="fas fa-plus-circle mr-2"></i> Add Resource
                             </a>
+                            {% endif %}
                             {% if current_user.role == 'admin' %}
                             <a href="{{ url_for('admin.admin_dashboard') }}" class="dropdown-item">
                                 <i class="fas fa-cog mr-2"></i> Admin Dashboard
@@ -233,10 +242,12 @@
                        class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
                         <i class="fas fa-inbox mr-2"></i> Messages
                     </a>
+                    {% if current_user.role in ['staff', 'admin'] %}
                     <a href="{{ url_for('resources.create_resource') }}" 
                        class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">
                         <i class="fas fa-plus-circle mr-2"></i> Add Resource
                     </a>
+                    {% endif %}
                     {% if current_user.role == 'admin' %}
                     <a href="{{ url_for('admin.admin_dashboard') }}" 
                        class="text-white hover:bg-indigo-700 px-4 py-2 rounded-lg font-medium transition">

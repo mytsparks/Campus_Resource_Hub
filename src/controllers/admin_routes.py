@@ -202,3 +202,67 @@ def moderate_reviews():
 
     return render_template('admin/reviews.html', reviews=reviews)
 
+
+@admin_bp.route('/reviews/<int:review_id>/edit', methods=['GET', 'POST'])
+@login_required
+@admin_required
+def edit_review(review_id: int):
+    """Edit a review (admin only)."""
+    with get_db_session() as session:
+        review_dal = ReviewDAL(session)
+        review = review_dal.get_review_by_id(review_id)
+        
+        if not review:
+            flash('Review not found.', 'error')
+            return redirect(url_for('admin.moderate_reviews'))
+        
+        if request.method == 'POST':
+            rating = request.form.get('rating', type=int)
+            comment = request.form.get('comment', '').strip()
+            
+            updated_review = review_dal.update_review(
+                review_id=review_id,
+                rating=rating,
+                comment=comment if comment else None
+            )
+            
+            if updated_review:
+                flash('Review updated successfully.', 'success')
+            else:
+                flash('Failed to update review.', 'error')
+            
+            return redirect(url_for('admin.moderate_reviews'))
+        
+        # Get resource and reviewer info for display
+        from sqlalchemy import text
+        result = session.execute(
+            text("""
+                SELECT r.*, res.title as resource_title, u.name as reviewer_name
+                FROM reviews r
+                JOIN resources res ON r.resource_id = res.resource_id
+                JOIN users u ON r.reviewer_id = u.user_id
+                WHERE r.review_id = :review_id
+            """),
+            {"review_id": review_id}
+        )
+        row = result.fetchone()
+        review_data = dict(row._mapping) if row else None
+    
+    return render_template('admin/edit_review.html', review=review_data)
+
+
+@admin_bp.route('/reviews/<int:review_id>/delete', methods=['POST'])
+@login_required
+@admin_required
+def delete_review(review_id: int):
+    """Delete a review (admin only)."""
+    with get_db_session() as session:
+        review_dal = ReviewDAL(session)
+        success = review_dal.delete_review(review_id)
+        
+        if success:
+            flash('Review deleted successfully.', 'success')
+        else:
+            flash('Failed to delete review.', 'error')
+    
+    return redirect(url_for('admin.moderate_reviews'))

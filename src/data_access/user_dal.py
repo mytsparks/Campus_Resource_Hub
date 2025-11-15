@@ -128,3 +128,24 @@ class UserDAL:
 
         return None
 
+    def get_users_by_role(self, role: str) -> list[User]:
+        """Get all users with a specific role."""
+        from sqlalchemy import text
+        result = self.db_session.execute(
+            text("SELECT * FROM users WHERE role = :role"),
+            {"role": role}
+        )
+        users = []
+        for row in result:
+            users.append(User(
+                user_id=row[0],
+                name=row[1],
+                email=row[2],
+                password_hash=row[3],
+                role=row[4],
+                profile_image=row[5] if len(row) > 5 else None,
+                department=row[6] if len(row) > 6 else None,
+                created_at=row[7] if len(row) > 7 else None,
+            ))
+        return users
+

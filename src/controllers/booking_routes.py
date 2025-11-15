@@ -26,6 +26,31 @@ def create_booking(resource_id: int):
         if not resource:
             flash('Resource not found.', 'error')
             return redirect(url_for('resources.list_resources'))
+        
+        # Extract all resource attributes while still in session context
+        # This prevents DetachedInstanceError when accessing resource attributes in template
+        resource_dict = {
+            'resource_id': resource.resource_id,
+            'owner_id': resource.owner_id,
+            'title': resource.title,
+            'description': resource.description,
+            'category': resource.category,
+            'location': resource.location,
+            'capacity': resource.capacity,
+            'images': resource.images,
+            'availability_rules': resource.availability_rules,
+            'status': resource.status,
+            'booking_type': getattr(resource, 'booking_type', 'open'),
+            'created_at': resource.created_at,
+        }
+        
+        # Create a simple object-like structure for the template
+        class ResourceObj:
+            def __init__(self, data):
+                for key, value in data.items():
+                    setattr(self, key, value)
+        
+        resource_obj = ResourceObj(resource_dict)
 
         if request.method == 'POST':
             # Validate CSRF token for raw form submissions
@@ -33,7 +58,18 @@ def create_booking(resource_id: int):
                 validate_csrf(request.form.get('csrf_token'))
             except Exception:
                 flash('Invalid security token. Please try again.', 'error')
-                return render_template('bookings/create.html', form=form, resource=resource)
+                # Get bookings data for error case
+                booking_dal = BookingDAL(session)
+                existing_bookings = booking_dal.get_bookings_for_resource(resource_id)
+                bookings_data = []
+                for booking in existing_bookings:
+                    if booking.start_datetime and booking.end_datetime:
+                        bookings_data.append({
+                            'start': booking.start_datetime.isoformat() if hasattr(booking.start_datetime, 'isoformat') else str(booking.start_datetime),
+                            'end': booking.end_datetime.isoformat() if hasattr(booking.end_datetime, 'isoformat') else str(booking.end_datetime),
+                            'status': booking.status
+                        })
+                return render_template('bookings/create.html', form=form, resource=resource_obj, show_waitlist=False, existing_bookings=bookings_data)
             
             # Handle both FlaskForm and raw form data
             if form.validate_on_submit():
@@ -49,7 +85,18 @@ def create_booking(resource_id: int):
             
             if not start_datetime_str or not end_datetime_str:
                 flash('Start time and end time are required.', 'error')
-                return render_template('bookings/create.html', form=form, resource=resource)
+                # Get bookings data for error case
+                booking_dal = BookingDAL(session)
+                existing_bookings = booking_dal.get_bookings_for_resource(resource_id)
+                bookings_data = []
+                for booking in existing_bookings:
+                    if booking.start_datetime and booking.end_datetime:
+                        bookings_data.append({
+                            'start': booking.start_datetime.isoformat() if hasattr(booking.start_datetime, 'isoformat') else str(booking.start_datetime),
+                            'end': booking.end_datetime.isoformat() if hasattr(booking.end_datetime, 'isoformat') else str(booking.end_datetime),
+                            'status': booking.status
+                        })
+                return render_template('bookings/create.html', form=form, resource=resource_obj, show_waitlist=False, existing_bookings=bookings_data)
             
             # Parse datetime from form (datetime-local format: YYYY-MM-DDTHH:MM)
             try:
@@ -57,16 +104,44 @@ def create_booking(resource_id: int):
                 end_time = datetime.strptime(end_datetime_str, '%Y-%m-%dT%H:%M')
             except (ValueError, AttributeError, TypeError):
                 flash('Invalid date/time format. Please use the date picker.', 'error')
-                return render_template('bookings/create.html', form=form, resource=resource)
-
+                # Get bookings data for error case
+                booking_dal = BookingDAL(session)
+                existing_bookings = booking_dal.get_bookings_for_resource(resource_id)
+                bookings_data = []
+                for booking in existing_bookings:
+                    if booking.start_datetime and booking.end_datetime:
+                        bookings_data.append({
+                            'start': booking.start_datetime.isoformat() if hasattr(booking.start_datetime, 'isoformat') else str(booking.start_datetime),
+                            'end': booking.end_datetime.isoformat() if hasattr(booking.end_datetime, 'isoformat') else str(booking.end_datetime),
+                            'status': booking.status
+                        })
+                return render_template('bookings/create.html', form=form, resource=resource_obj, show_waitlist=False, existing_bookings=bookings_data)
+            
             if end_time <= start_time:
                 flash('End time must be after start time.', 'error')
-                return render_template('bookings/create.html', form=form, resource=resource)
+                # Get bookings data for error case
+                booking_dal = BookingDAL(session)
+                existing_bookings = booking_dal.get_bookings_for_resource(resource_id)
+                bookings_data = []
+                for booking in existing_bookings:
+                    if booking.start_datetime and booking.end_datetime:
+                        bookings_data.append({
+                            'start': booking.start_datetime.isoformat() if hasattr(booking.start_datetime, 'isoformat') else str(booking.start_datetime),
+                            'end': booking.end_datetime.isoformat() if hasattr(booking.end_datetime, 'isoformat') else str(booking.end_datetime),
+                            'status': booking.status
+                        })
+                return render_template('bookings/create.html', form=form, resource=resource_obj, show_waitlist=False, existing_bookings=bookings_data)
 
             booking_dal = BookingDAL(session)
             
-            # Determine approval status (auto-approve for now, can be enhanced)
-            initial_status = 'approved' if resource.status == 'published' else 'pending'
+            # Determine approval status based on booking_type
+            # Open resources: auto-approve if published
+            # Restricted resources: always require manual approval
+            booking_type = resource_obj.booking_type
+            if booking_type == 'open' and resource_obj.status == 'published':
+                initial_status = 'approved'
+            else:
+                initial_status = 'pending'
             
             booking = booking_dal.create_booking(
                 resource_id=resource_id,
@@ -83,7 +158,7 @@ def create_booking(resource_id: int):
                     message_dal = MessageDAL(session)
                     message_dal.create_message(
                         sender_id=current_user.user_id,
-                        receiver_id=resource.owner_id,
+                        receiver_id=resource_obj.owner_id,
                         content=message_content,
                         thread_id=booking.booking_id,
                     )
@@ -91,9 +166,29 @@ def create_booking(resource_id: int):
                 flash(f'Booking {"approved" if initial_status == "approved" else "requested"} successfully!', 'success')
                 return redirect(url_for('bookings.my_bookings'))
             else:
-                # Conflict detected - offer waitlist
-                flash('This time slot is already booked. You can join the waitlist below.', 'warning')
-                return render_template('bookings/create.html', form=form, resource=resource, show_waitlist=True)
+                # Conflict detected - prompt user to message owner and notify admin
+                flash('This time slot is already booked. Please send a message to the resource owner to discuss availability.', 'warning')
+                
+                # Notify admin of conflict
+                from src.data_access.user_dal import UserDAL
+                user_dal = UserDAL(session)
+                admins = user_dal.get_users_by_role('admin')
+                
+                from src.data_access.message_dal import MessageDAL
+                message_dal = MessageDAL(session)
+                conflict_message = f"Booking conflict detected: User {current_user.name} ({current_user.email}) attempted to book {resource_obj.title} from {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}, but this time slot is already reserved."
+                
+                for admin in admins:
+                    message_dal.create_message(
+                        sender_id=current_user.user_id,
+                        receiver_id=admin.user_id,
+                        content=conflict_message,
+                        thread_id=None,
+                    )
+                
+                # Redirect to message page with pre-filled form
+                return redirect(url_for('messages.message_user', user_id=resource_obj.owner_id, 
+                                     prefill_message=f"I would like to book {resource_obj.title} from {start_time.strftime('%Y-%m-%d %H:%M')} to {end_time.strftime('%Y-%m-%d %H:%M')}, but this time appears to be unavailable. Could we discuss alternative times?"))
 
         # Get existing bookings for calendar display
         booking_dal = BookingDAL(session)
@@ -107,8 +202,33 @@ def create_booking(resource_id: int):
                     'end': booking.end_datetime.isoformat() if hasattr(booking.end_datetime, 'isoformat') else str(booking.end_datetime),
                     'status': booking.status
                 })
+        
+        # Extract all resource attributes while still in session context
+        # This prevents DetachedInstanceError when accessing resource.title in template
+        resource_dict = {
+            'resource_id': resource.resource_id,
+            'owner_id': resource.owner_id,
+            'title': resource.title,
+            'description': resource.description,
+            'category': resource.category,
+            'location': resource.location,
+            'capacity': resource.capacity,
+            'images': resource.images,
+            'availability_rules': resource.availability_rules,
+            'status': resource.status,
+            'booking_type': getattr(resource, 'booking_type', 'open'),
+            'created_at': resource.created_at,
+        }
+        
+        # Create a simple object-like structure for the template
+        class ResourceObj:
+            def __init__(self, data):
+                for key, value in data.items():
+                    setattr(self, key, value)
+        
+        resource_obj = ResourceObj(resource_dict)
     
-    return render_template('bookings/create.html', form=form, resource=resource, show_waitlist=False, existing_bookings=bookings_data)
+    return render_template('bookings/create.html', form=form, resource=resource_obj, show_waitlist=False, existing_bookings=bookings_data)
 
 
 @booking_bp.route('/my-bookings')
