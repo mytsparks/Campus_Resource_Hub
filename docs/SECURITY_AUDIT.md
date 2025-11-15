@@ -1,6 +1,6 @@
 # Security Audit Report
 
-**Reference:** `docs/context/PM/PRD.md` - Section 7 Security & Validation
+**Reference:** `docs/context/PM/PRD.md`
 
 ## Security Measures Implemented
 
