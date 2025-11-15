@@ -63,12 +63,14 @@ def test_parameterized_queries_used(app):
         with get_db_session() as session:
             user_dal = UserDAL(session)
             
+            # Use a unique email that definitely doesn't exist
             # This should use parameterized queries internally
             # If it doesn't, it would be vulnerable to SQL injection
-            user = user_dal.get_user_by_email("test@example.com")
+            unique_email = "nonexistent_user_12345@test.com"
+            user = user_dal.get_user_by_email(unique_email)
             
             # Should return None (user doesn't exist) without error
-            assert user is None or isinstance(user, type(None))
+            assert user is None
 
 
 def test_xss_protection_in_templates(client, app):

@@ -48,14 +48,14 @@ class ResourceForm(FlaskForm):
         validators=[DataRequired()],
     )
     booking_type = SelectField(
-        'Booking Type',
+        'Booking Approval',
         choices=[
-            ('open', 'Open - Auto-approved'),
-            ('restricted', 'Restricted - Requires approval'),
+            ('open', 'Unrestricted - Auto-approved'),
+            ('restricted', 'Requires Approval - Manual review'),
         ],
         default='open',
         validators=[DataRequired()],
-        description='Open resources are automatically approved. Restricted resources require manual approval.',
+        description='Unrestricted resources are automatically approved when booked. Resources requiring approval need manual admin/staff review.',
     )
     images = FileField(
         'Images',
