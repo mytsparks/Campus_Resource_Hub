@@ -276,13 +276,21 @@ def my_bookings():
     return render_template('bookings/my_bookings.html', bookings=bookings)
 
 
-@booking_bp.route('/approve/<int:booking_id>')
+@booking_bp.route('/approve/<int:booking_id>', methods=['POST'])
 @login_required
 def approve_booking(booking_id: int):
     """Approve a pending booking (staff/admin only)."""
     if current_user.role not in ('staff', 'admin'):
         flash('You do not have permission to approve bookings.', 'error')
         return redirect(url_for('bookings.my_bookings'))
+    
+    # Validate CSRF token
+    from flask_wtf.csrf import validate_csrf
+    try:
+        validate_csrf(request.form.get('csrf_token'))
+    except Exception:
+        flash('Invalid security token. Please try again.', 'error')
+        return redirect(url_for('admin.admin_dashboard'))
 
     with get_db_session() as session:
         booking_dal = BookingDAL(session)
@@ -296,10 +304,46 @@ def approve_booking(booking_id: int):
     return redirect(url_for('admin.admin_dashboard'))
 
 
-@booking_bp.route('/cancel/<int:booking_id>')
+@booking_bp.route('/reject/<int:booking_id>', methods=['POST'])
+@login_required
+def reject_booking(booking_id: int):
+    """Reject a pending booking (staff/admin only)."""
+    if current_user.role not in ('staff', 'admin'):
+        flash('You do not have permission to reject bookings.', 'error')
+        return redirect(url_for('bookings.my_bookings'))
+    
+    # Validate CSRF token
+    from flask_wtf.csrf import validate_csrf
+    try:
+        validate_csrf(request.form.get('csrf_token'))
+    except Exception:
+        flash('Invalid security token. Please try again.', 'error')
+        return redirect(url_for('admin.admin_dashboard'))
+
+    with get_db_session() as session:
+        booking_dal = BookingDAL(session)
+        booking = booking_dal.update_booking_status(booking_id, 'rejected')
+        
+        if booking:
+            flash('Booking rejected successfully.', 'success')
+        else:
+            flash('Failed to reject booking.', 'error')
+
+    return redirect(url_for('admin.admin_dashboard'))
+
+
+@booking_bp.route('/cancel/<int:booking_id>', methods=['POST'])
 @login_required
 def cancel_booking(booking_id: int):
     """Cancel a booking."""
+    # Validate CSRF token
+    from flask_wtf.csrf import validate_csrf
+    try:
+        validate_csrf(request.form.get('csrf_token'))
+    except Exception:
+        flash('Invalid security token. Please try again.', 'error')
+        return redirect(url_for('bookings.my_bookings'))
+    
     with get_db_session() as session:
         booking_dal = BookingDAL(session)
         booking = booking_dal.update_booking_status(booking_id, 'cancelled')

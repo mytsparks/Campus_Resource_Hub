@@ -158,6 +158,14 @@ def edit_my_review(review_id: int):
 @login_required
 def delete_my_review(review_id: int):
     """Delete own review (users can only delete their own reviews)."""
+    # Validate CSRF token
+    from flask_wtf.csrf import validate_csrf
+    try:
+        validate_csrf(request.form.get('csrf_token'))
+    except Exception:
+        flash('Invalid security token. Please try again.', 'error')
+        return redirect(url_for('user.user_dashboard'))
+    
     with get_db_session() as session:
         review_dal = ReviewDAL(session)
         review = review_dal.get_review_by_id(review_id)

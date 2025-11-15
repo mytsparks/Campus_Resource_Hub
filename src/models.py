@@ -167,7 +167,7 @@ class Message(Base):
 
 
 class Review(Base):
-    """Represents a rating and feedback left by a user after a completed booking."""
+    """Represents a rating and feedback left by a user for a resource."""
 
     __tablename__ = 'reviews'
     __allow_unmapped__ = True

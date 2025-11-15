@@ -217,6 +217,14 @@ def edit_review(review_id: int):
             return redirect(url_for('admin.moderate_reviews'))
         
         if request.method == 'POST':
+            # Validate CSRF token
+            from flask_wtf.csrf import validate_csrf
+            try:
+                validate_csrf(request.form.get('csrf_token'))
+            except Exception:
+                flash('Invalid security token. Please try again.', 'error')
+                return redirect(url_for('admin.moderate_reviews'))
+            
             rating = request.form.get('rating', type=int)
             comment = request.form.get('comment', '').strip()
             
@@ -256,6 +264,14 @@ def edit_review(review_id: int):
 @admin_required
 def delete_review(review_id: int):
     """Delete a review (admin only)."""
+    # Validate CSRF token
+    from flask_wtf.csrf import validate_csrf
+    try:
+        validate_csrf(request.form.get('csrf_token'))
+    except Exception:
+        flash('Invalid security token. Please try again.', 'error')
+        return redirect(url_for('admin.moderate_reviews'))
+    
     with get_db_session() as session:
         review_dal = ReviewDAL(session)
         success = review_dal.delete_review(review_id)
