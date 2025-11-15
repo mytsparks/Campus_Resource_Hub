@@ -5,9 +5,6 @@ Routes for AI-powered summary reports and insights.
 from flask import Blueprint, render_template, request, flash, jsonify
 from flask_login import current_user, login_required
 
-from src.controllers.auth_routes import get_db_session
-from pathlib import Path
-import os
 from markdown import markdown
 import bleach
 
@@ -26,12 +23,15 @@ def generate_summary():
     
     try:
         from src.ai.summary_generator import SummaryGenerator
+        from src.extensions import db
+        from config import Config
         
-        # Get database path
-        db_path = Path(__file__).parent.parent.parent / "instance" / "site.db"
+        # Use SQLAlchemy engine for database access (works with both SQLite and PostgreSQL)
+        # In production, this will use PostgreSQL via DATABASE_URL
+        # In local dev, this will use SQLite from the same connection
+        engine = db.engine
         
         # Get LLM configuration from environment or config
-        from config import Config
         llm_config = {
             'llm_provider': Config.LLM_PROVIDER,
             'llm_model': Config.LLM_MODEL,
@@ -39,7 +39,7 @@ def generate_summary():
             'base_url': Config.OLLAMA_BASE_URL
         }
         
-        generator = SummaryGenerator(db_path, llm_config)
+        generator = SummaryGenerator(engine=engine, llm_config=llm_config)
         summary = generator.generate_summary()
         insights = generator.generate_insights()
         summary_markdown = ""
@@ -75,10 +75,12 @@ def api_insights():
     
     try:
         from src.ai.summary_generator import SummaryGenerator
-        
-        db_path = Path(__file__).parent.parent.parent / "instance" / "site.db"
-        
+        from src.extensions import db
         from config import Config
+        
+        # Use SQLAlchemy engine for database access
+        engine = db.engine
+        
         llm_config = {
             'llm_provider': Config.LLM_PROVIDER,
             'llm_model': Config.LLM_MODEL,
@@ -86,7 +88,7 @@ def api_insights():
             'base_url': Config.OLLAMA_BASE_URL
         }
         
-        generator = SummaryGenerator(db_path, llm_config)
+        generator = SummaryGenerator(engine=engine, llm_config=llm_config)
         insights = generator.generate_insights()
         
         return jsonify(insights)
@@ -104,10 +106,12 @@ def api_summary():
     
     try:
         from src.ai.summary_generator import SummaryGenerator
-        
-        db_path = Path(__file__).parent.parent.parent / "instance" / "site.db"
-        
+        from src.extensions import db
         from config import Config
+        
+        # Use SQLAlchemy engine for database access
+        engine = db.engine
+        
         llm_config = {
             'llm_provider': Config.LLM_PROVIDER,
             'llm_model': Config.LLM_MODEL,
@@ -115,7 +119,7 @@ def api_summary():
             'base_url': Config.OLLAMA_BASE_URL
         }
         
-        generator = SummaryGenerator(db_path, llm_config)
+        generator = SummaryGenerator(engine=engine, llm_config=llm_config)
         summary = generator.generate_summary()
         insights = generator.generate_insights()
         summary_markdown = ""

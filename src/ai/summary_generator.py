@@ -10,37 +10,103 @@ import os
 import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 
 import requests
 import sqlite3
 from contextlib import contextmanager
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Engine
 
 
 class DatabaseQuery:
-    """Helper class to query database directly (alternative to MCP for internal use)."""
+    """Helper class to query database directly (alternative to MCP for internal use).
+    Supports both SQLite (local) and PostgreSQL (production) via SQLAlchemy."""
     
-    def __init__(self, db_path: Path):
+    def __init__(self, db_path: Union[Path, Engine, None] = None, engine: Optional[Engine] = None):
+        """
+        Initialize database query handler.
+        
+        Args:
+            db_path: Path to SQLite database file (for local development)
+            engine: SQLAlchemy engine (for production PostgreSQL)
+        """
         self.db_path = db_path
+        self.engine = engine
+        
+        # If engine is provided, use it (production)
+        # Otherwise, use db_path for SQLite (local)
+        if engine is not None:
+            self.use_sqlalchemy = True
+        elif db_path and isinstance(db_path, Engine):
+            self.engine = db_path
+            self.use_sqlalchemy = True
+        else:
+            self.use_sqlalchemy = False
     
     @contextmanager
     def get_connection(self):
         """Get a read-only database connection."""
-        conn = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-        finally:
-            conn.close()
+        if self.use_sqlalchemy:
+            # Use SQLAlchemy engine (PostgreSQL in production)
+            conn = self.engine.connect()
+            try:
+                yield conn
+            finally:
+                conn.close()
+        else:
+            # Use SQLite directly (local development)
+            conn = sqlite3.connect(f"file:{self.db_path}?mode=ro", uri=True)
+            conn.row_factory = sqlite3.Row
+            try:
+                yield conn
+            finally:
+                conn.close()
     
     def execute_query(self, query: str, params: tuple = ()) -> List[Dict[str, Any]]:
         """Execute a SELECT query and return results as dictionaries."""
-        with self.get_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            columns = [description[0] for description in cursor.description]
-            rows = cursor.fetchall()
-            return [dict(zip(columns, row)) for row in rows]
+        if self.use_sqlalchemy:
+            # Use SQLAlchemy for PostgreSQL (or SQLite via SQLAlchemy)
+            with self.engine.connect() as conn:
+                if params:
+                    # SQLAlchemy text() can handle ? placeholders, but we need to bind them
+                    # Convert tuple to list for bindparam, or use positional binding
+                    # For compatibility, convert ? to :param style
+                    
+                    # Check if query uses ? placeholders (SQLite style)
+                    if '?' in query:
+                        # Convert ? placeholders to named parameters
+                        param_dict = {}
+                        modified_query = query
+                        param_index = 0
+                        while '?' in modified_query:
+                            param_name = f'param_{param_index}'
+                            modified_query = modified_query.replace('?', f':{param_name}', 1)
+                            param_dict[param_name] = params[param_index]
+                            param_index += 1
+                        result = conn.execute(text(modified_query), param_dict)
+                    else:
+                        # Already using named parameters
+                        if isinstance(params, tuple):
+                            # Convert tuple to dict if needed
+                            param_dict = {f'param_{i}': p for i, p in enumerate(params)}
+                            result = conn.execute(text(query), param_dict)
+                        else:
+                            result = conn.execute(text(query), params)
+                else:
+                    result = conn.execute(text(query))
+                
+                columns = result.keys()
+                rows = result.fetchall()
+                return [dict(zip(columns, row)) for row in rows]
+        else:
+            # Use SQLite directly
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(query, params)
+                columns = [description[0] for description in cursor.description]
+                rows = cursor.fetchall()
+                return [dict(zip(columns, row)) for row in rows]
 
 
 class LLMClient:
@@ -205,9 +271,17 @@ class LLMClient:
 class SummaryGenerator:
     """Generates weekly summaries and system insights from database data."""
     
-    def __init__(self, db_path: Path, llm_config: Dict[str, Any]):
-        self.db = DatabaseQuery(db_path)
-        self.llm = LLMClient(llm_config)
+    def __init__(self, db_path: Union[Path, Engine, None] = None, llm_config: Dict[str, Any] = None, engine: Optional[Engine] = None):
+        """
+        Initialize summary generator.
+        
+        Args:
+            db_path: Path to SQLite database file (for local development)
+            llm_config: Configuration for LLM client
+            engine: SQLAlchemy engine (for production PostgreSQL) - takes precedence over db_path
+        """
+        self.db = DatabaseQuery(db_path=db_path, engine=engine)
+        self.llm = LLMClient(llm_config or {})
     
     def get_weekly_data(self) -> Dict[str, Any]:
         """Collect data for the past week."""
