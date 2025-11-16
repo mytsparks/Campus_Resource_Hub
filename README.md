@@ -18,6 +18,7 @@ https://campus-resource-hub-449695188584.europe-west1.run.app/
 
 1. **Clone the repository:**
    ```bash
+   git clone <repository-url>
    cd Campus_Resource_Hub
    ```
 
@@ -26,15 +27,36 @@ https://campus-resource-hub-449695188584.europe-west1.run.app/
    pip install -r requirements.txt
    ```
 
-3. **Run the application:**
+3. **Configure environment variables (Optional for local development):**
+   
+   For basic local development, the app will work with default settings (SQLite database). However, if you want to:
+   - Use AI-powered summary features (requires LLM API key)
+   - Use PostgreSQL instead of SQLite
+   - Configure Google Cloud Storage for file uploads
+   
+   Copy the example environment file and update it:
    ```bash
-   python app.py
+   cp env.example .env
+   ```
+   
+   Then edit `.env` and set your values:
+   - `SECRET_KEY`: Generate a secure random key (optional for local dev, has default)
+   - `DATABASE_URL`: PostgreSQL connection string (optional, defaults to SQLite)
+   - `LLM_API_KEY`: Required for AI summary features (get from Google Gemini, OpenAI, or Anthropic)
+   - `LLM_PROVIDER`: LLM provider to use (defaults to 'gemini')
+   - `USE_GCS`: Set to 'true' to use Google Cloud Storage (defaults to 'false' for local filesystem)
+   
+   **Note:** The `.env` file is gitignored and will not be committed to the repository.
+
+4. **Run the application:**
+   ```bash
+   python application.py
    ```
 
-4. **Access the application:**
+5. **Access the application:**
    - Open your browser to: `http://127.0.0.1:5000`
    - Default admin credentials:
-     - **Username:** `admin` or `admin@campushub.local`
+     - **Email:** `admin@campushub.local`
      - **Password:** `Password1`
 
 ## 📋 Core Features
@@ -109,7 +131,7 @@ https://campus-resource-hub-449695188584.europe-west1.run.app/
 ### Project Structure
 ```
 Campus_Resource_Hub/
-├── app.py                 # Flask application factory
+├── application.py         # Flask application entry point
 ├── config.py              # Configuration settings
 ├── requirements.txt       # Python dependencies
 ├── src/
@@ -166,18 +188,62 @@ See `src/models.py` for complete schema definitions.
 
 ## 🔧 Configuration
 
-### Environment Variables (Optional)
+### Environment Variables
 
-Create a `.env` file in the project root:
+The application works with default settings for local development, but you can customize behavior using environment variables.
 
-```env
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///site.db
-```
+#### Quick Setup
+
+1. **Copy the example file:**
+   ```bash
+   cp env.example .env
+   ```
+
+2. **Edit `.env` with your values** (see below for what each variable does)
+
+#### Available Environment Variables
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `SECRET_KEY` | No | Auto-generated | Flask secret key for sessions (use a secure random string in production) |
+| `DATABASE_URL` | No | `sqlite:///site.db` | Database connection string. Use PostgreSQL format for production: `postgresql://user:pass@host:port/dbname` |
+| `LLM_PROVIDER` | No | `gemini` | LLM provider: `gemini`, `ollama`, `openai`, or `anthropic` |
+| `LLM_MODEL` | No | `gemini-2.0-flash` | Model name (varies by provider) |
+| `LLM_API_KEY` | Yes* | None | API key for LLM provider (*required for AI summary features) |
+| `OLLAMA_BASE_URL` | No | `http://localhost:11434` | Base URL for Ollama (if using local LLM) |
+| `USE_GCS` | No | `false` | Set to `true` to use Google Cloud Storage for file uploads |
+| `GCS_BUCKET_NAME` | Yes** | None | GCS bucket name (**required if `USE_GCS=true`) |
+| `GCS_PROJECT_ID` | Yes** | None | GCP project ID (**required if `USE_GCS=true`) |
+| `FLASK_DEBUG` | No | `False` | Enable Flask debug mode (set to `True` for development) |
+
+#### Local Development (Minimal Setup)
+
+For basic local development, you don't need a `.env` file. The app will:
+- Use SQLite database (`instance/site.db`)
+- Use local filesystem for uploads (`src/static/uploads/`)
+- Work without AI features (summary generation will be disabled)
+
+#### Production Setup
+
+For production deployment (GCP, Heroku, etc.), set these in your platform's environment variables:
+- `SECRET_KEY`: Generate a secure random key
+- `DATABASE_URL`: PostgreSQL connection string
+- `LLM_API_KEY`: Your LLM provider API key (if using AI features)
+- `USE_GCS`: Set to `true` for cloud storage
+- `GCS_BUCKET_NAME` and `GCS_PROJECT_ID`: If using GCS
 
 ### File Uploads
 
+**Local Development:**
 - Upload folder: `src/static/uploads/`
+- Files stored on local filesystem
+
+**Production (with GCS):**
+- Files stored in Google Cloud Storage bucket
+- Public URLs generated automatically
+- Set `USE_GCS=true` and configure `GCS_BUCKET_NAME` and `GCS_PROJECT_ID`
+
+**Settings:**
 - Max file size: 16MB
 - Allowed extensions: JPG, JPEG, PNG, GIF, WEBP
 
@@ -322,7 +388,7 @@ The database is automatically created on first run. To reset:
 ### Common Issues
 
 **Port already in use:**
-- Change port in `app.py`: `app.run(debug=True, port=5001)`
+- Change port in `application.py`: `application.run(debug=True, port=5001)`
 
 **Database errors:**
 - Ensure write permissions in project directory

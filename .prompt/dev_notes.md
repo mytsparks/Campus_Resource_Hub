@@ -355,7 +355,7 @@ The user's question highlighted important considerations for assignment submissi
 ## Prompt 19: Implement Google Gemini
 
 **Prompt:**
-Actually, for the summary generation i want to use google gemini, with key: AIzaSyAXgN9mtjViENMwG92Ymbb749wt4Ip3bLs. Implement this into the webapp.
+Actually, for the summary generation i want to use google gemini, with key: [API Key Here]. Implement this into the webapp.
 
 **Action Taken:**
 - Added `_generate_gemini()` method to `LLMClient` class in `src/ai/summary_generator.py`
@@ -371,6 +371,149 @@ The Gemini integration was straightforward thanks to the flexible LLM architectu
 
 ---
 
-## Summary
+## Prompt 20: PostgreSQL Setup and GCP Deployment
 
-Throughout development, the AI-assisted workflow enabled rapid iteration and comprehensive feature implementation. The separation of concerns (MVC + DAL) made the codebase maintainable. The AI-First Development practices (context packs, dev notes) helped maintain project context. The flexible LLM architecture allowed easy provider switching. The security-first approach (CSRF protection, password hashing, read-only database access) ensured production readiness. The modern UI with responsive design created a professional user experience.
+**Prompt:**
+I have a postgres db set up with connection url "postgresql://..." so set up this application to support postgres connection and db operations. After this i want to deploy the app to gcp so how do I do this.
+
+**Action Taken:**
+- Updated `config.py` to use `DATABASE_URL` environment variable for PostgreSQL
+- Added SQLAlchemy engine options for connection pooling (pool_size, pool_recycle, pool_pre_ping)
+- Created `Dockerfile` for containerized deployment
+- Created `.dockerignore` to exclude unnecessary files
+- Updated `application.py` to handle both SQLite (local) and PostgreSQL (production)
+- Configured GCP Cloud Run deployment with GitHub integration
+- Set up environment variables in GCP console (DATABASE_URL, SECRET_KEY, etc.)
+- Implemented Google Cloud Storage for persistent file uploads
+
+**Reflection:**
+The transition from SQLite to PostgreSQL was seamless thanks to SQLAlchemy's database abstraction. The Docker containerization simplified deployment. The environment variable approach allowed the same codebase to work in both local and production environments. The GCS integration solved the file persistence issue across deployments. This deployment process demonstrated the importance of cloud-ready architecture from the start.
+
+---
+
+## Prompt 21: Mobile Responsiveness
+
+**Prompt:**
+The UI does not scale properly to mobile devices. In the files that make up the view layer of the MVC, update the way the webapp presents itself so that it has appropriate formatting on mobile web browsers, and ensure that it still looks the same on regular desktop browsers but scales for smaller screens.
+
+**Action Taken:**
+- Updated all templates with Tailwind CSS responsive classes (`sm:`, `md:`, `lg:` breakpoints)
+- Modified `src/views/base.html` with responsive navigation (hamburger menu for mobile)
+- Updated `src/views/index.html` with responsive filter sidebar and resource cards
+- Adjusted font sizes, padding, and spacing for mobile devices
+- Made forms and buttons stack vertically on mobile, horizontally on desktop
+- Ensured images scale properly with `w-full h-auto` classes
+- Added mobile-friendly modal layouts with proper scrolling
+
+**Reflection:**
+The responsive design implementation significantly improved mobile usability. Tailwind's utility classes made responsive design straightforward. The mobile-first approach (base styles for mobile, then `sm:`, `md:`, `lg:` for larger screens) ensured good mobile experience. The hamburger menu navigation improved mobile navigation significantly. This work made the application truly accessible across all device types.
+
+---
+
+## Prompt 22: Google Cloud Storage Integration
+
+**Prompt:**
+When pushing a new version to git, it overwrites the static uploads folder, so now resources created in the cloud hosted interface are not saved/displayed after an update. What is the best way to remedy this?
+
+**Action Taken:**
+- Created `src/utils/storage.py` with abstraction layer for file storage
+- Implemented Google Cloud Storage (GCS) integration using `google-cloud-storage` library
+- Added `USE_GCS` environment variable to toggle between local and GCS storage
+- Updated `src/controllers/resource_routes.py` to use storage utility
+- Configured GCS bucket with public access for images
+- Updated image URL generation to use GCS public URLs in production
+- Maintained backward compatibility with local file storage for development
+
+**Reflection:**
+The storage abstraction layer was crucial - it allowed seamless switching between local and cloud storage. The GCS integration solved the file persistence problem permanently. The public URL approach worked well for images. The environment variable toggle made it easy to test locally while using GCS in production. This pattern could be extended to support other cloud storage providers (AWS S3, Azure Blob) if needed.
+
+---
+
+## Prompt 23: Comprehensive Feature Implementation
+
+**Prompt:**
+Below is a list of the remaining requirements that need to be fulfilled... Carry out the necessary changes that can be done to implement these, and be sure to adhere to: 1. the current styling and structure of the website (ensuring mobile display scaling) 2. Ensure the app can still be tested locally while also deployed to the cloud platform 3. Adhere to the MVC structure and functionality of the program.
+
+**Action Taken:**
+Comprehensive implementation of all remaining features:
+- Role-based access control (students can only view/book/review, staff can create resources)
+- Booking approval workflow (open vs restricted resources)
+- Conflict detection with admin notifications
+- Review system with aggregate ratings and top-rated badges
+- User dashboard for managing bookings and reviews
+- Admin panel with review moderation
+- Resource detail modal popup with image carousel
+- Security enhancements (CSRF protection, XSS prevention, parameterized queries)
+- Test suite creation (unit, integration, security tests)
+- Context grounding documentation
+
+**Reflection:**
+This was the most comprehensive implementation phase. The role-based restrictions required careful route and template updates. The booking approval workflow added significant complexity but improved resource management. The conflict detection with notifications created a better user experience. The review system with aggregate calculations demonstrated data processing capabilities. The security enhancements ensured production readiness. The test suite provided confidence in the implementation. This phase transformed the application from a prototype to a production-ready system.
+
+---
+
+## Prompt 24: Fix DetachedInstanceError Issues
+
+**Prompt:**
+Clicking book resource gives this error: DetachedInstanceError - Instance <Resource> is not bound to a Session; attribute refresh operation cannot proceed.
+
+**Action Taken:**
+- Identified that SQLAlchemy objects were being accessed after session closure
+- Created pattern of extracting object attributes into dictionaries before session closes
+- Implemented simple `ResourceObj` class to wrap dictionary data for templates
+- Applied fix to `booking_routes.py`, `review_routes.py`, and `resource_routes.py`
+- Ensured all database attributes accessed in templates are extracted while session is open
+
+**Reflection:**
+This error pattern appeared multiple times throughout development. The solution of extracting attributes into dictionaries before session closure became a standard pattern. This highlighted the importance of understanding SQLAlchemy session lifecycle. The simple wrapper class approach maintained template compatibility while preventing session errors. This fix pattern was applied consistently across all routes that passed ORM objects to templates.
+
+---
+
+## Prompt 25: Security and Route Review
+
+**Prompt:**
+Check all other routes too, I'm nearing the final deployment for the project due date so i want everything to work.
+
+**Action Taken:**
+Comprehensive security audit and fixes:
+- Fixed review deletion route (changed from GET link to POST form with CSRF)
+- Added CSRF protection to all admin routes (edit/delete reviews, approve/reject bookings)
+- Fixed booking cancellation route (changed from GET to POST with CSRF)
+- Added CSRF validation to user review deletion
+- Verified all state-changing operations use POST method
+- Ensured all POST routes have CSRF token validation
+- Fixed booking conflict notification error handling
+- Fixed filtering issues (category, location, capacity)
+
+**Reflection:**
+The comprehensive route review caught several security issues that could have been exploited. The pattern of using GET for state-changing operations was a common mistake. The CSRF protection addition ensured all forms were secure. The error handling improvements made the application more robust. This audit phase was critical for production deployment - finding and fixing these issues before launch prevented potential security vulnerabilities and user experience problems.
+
+---
+
+## Prompt 26: Dynamic Category Filter and Location Search
+
+**Prompt:**
+When creating a resource, there is a set number of options. Can you make the category filter a dynamic dropdown that only shows existing categories among all resources in the db, and change the location to a search field.
+
+**Action Taken:**
+- Created `/resources/api/categories` API endpoint to fetch unique categories from database
+- Updated filter form to fetch categories dynamically via JavaScript
+- Changed location filter from dropdown to text input with search icon
+- Updated location filtering to use `LIKE` for partial matching
+- Updated resource creation/edit forms to populate categories dynamically from database
+- Added "Clear Filters" button to reset all filter fields
+
+**Reflection:**
+The dynamic category approach improved user experience significantly - users only see categories that actually exist. The location search field provided more flexibility than a fixed dropdown. The API endpoint pattern could be extended for other dynamic data needs. The JavaScript-based population ensured the UI stayed responsive. This change made the filtering system more intuitive and maintainable.
+
+---
+
+## Final Reflection
+
+The development of Campus Resource Hub demonstrated the power of AI-assisted development when combined with solid architectural principles. The MVC + DAL pattern provided clear separation of concerns, making the codebase maintainable and testable. The AI-First Development practices—maintaining context packs, dev notes, and golden prompts—proved invaluable for maintaining project continuity across multiple development sessions.
+
+Key successes included the flexible LLM architecture that allowed easy provider switching (Ollama → OpenAI → Gemini), the comprehensive security implementation (CSRF, XSS protection, parameterized queries), and the cloud-ready deployment setup (PostgreSQL, GCS, Docker). The responsive design ensured accessibility across all devices, while the role-based access control and approval workflows provided the necessary administrative capabilities.
+
+Challenges encountered—such as DetachedInstanceError, CSRF token issues, and filtering problems—were systematically resolved through pattern recognition and consistent solutions. The comprehensive route security audit before deployment caught critical issues that could have compromised the application. The dynamic category and location search improvements showcased iterative refinement based on user needs.
+
+The project successfully delivered a production-ready application with AI-powered features, comprehensive security, and excellent user experience. The development process highlighted the importance of maintaining context, following best practices, and conducting thorough reviews before deployment.
